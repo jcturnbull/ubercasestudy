@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.venv
+.env
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Data
+data/raw/
+data/interim/
