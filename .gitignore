@@ -11,3 +11,6 @@ __pycache__/
 # Data
 data/raw/
 data/interim/
+
+# References folder
+ubercasestudy/references
