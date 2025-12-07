@@ -1,24 +1,28 @@
-This directory contains all active Python source files used for data ingestion, preprocessing, and metric generation for the project.
+This directory contains active Python scripts for downloading, cleaning, and transforming TLC and NOAA/ISD data.
 
-Current active scripts:
+Files:
 
-- config.py  
-  Defines project paths (raw, interim, processed directories) and initializes required folder structure.
+- config.py
+  Centralized paths and settings for raw, interim, and processed data directories.
 
-- download_tlc.py  
-  Downloads NYC TLC HVFHV monthly trip data into data/raw/tlc/.  
-  Uses public CloudFront URLs for fhvhv_tripdata_YYYY-MM.parquet.
+- download_tlc.py
+  Fetches monthly NYC TLC HVFHV trip parquet files into data/raw/tlc/.
 
-- download_weather_noaa.py  
-  Downloads NOAA daily-summaries (GHCND) weather data for JFK, LGA, and Central Park using GHCND station IDs.
+- download_weather_noaa.py
+  Downloads NOAA daily summaries (GHCND) for JFK, LGA, and Central Park.
 
-- download_isd_hourly.py  
-  Downloads hourly ISD (global-hourly) weather data using USAF–WBAN station identifiers (hyphens removed when saved).  
-  Produces raw hourly CSVs for each station in data/raw/weather/.
+- download_isd_hourly.py
+  Downloads hourly ISD (global-hourly) station data and saves raw CSVs.
 
-- load_isd_hourly.py  
-  Parses raw ISD CSVs, normalizes column names, constructs datetime index, and returns combined hourly weather DataFrames.
+- weather_build_interim.py
+  Converts raw ISD files into cleaned hourly parquet files (still in UTC).
 
-Other notes:
-- Only actively maintained code should remain in this directory.
-- Deprecated or superseded files are moved into the archive/ subfolder.
+- weather_aggregate_hourly.py
+  Aggregates interim weather to hourly metrics and converts timestamps from UTC to America/New_York (DST-aware).
+
+- weather_eda.py
+  Quick exploration utilities for inspecting weather completeness and anomalies.
+
+archive/
+  Older or deprecated scripts, including prior aggregation logic and diagnostics.
+

@@ -1,13 +1,16 @@
-This directory contains deprecated or superseded Python scripts retained for reference.  
-These files are no longer part of the active data ingestion or processing pipeline.
+This folder contains older or deprecated scripts kept for reference. 
+They are no longer part of the active processing pipeline.
 
-Archived scripts:
+Files:
 
-- download_weather_hourly.py  
-  Earlier version of hourly NOAA weather ingestion using GHCND-style station IDs.  
-  Retired because global-hourly requires USAF–WBAN identifiers and returned empty datasets for 2025.  
-  Replaced by download_isd_hourly.py in the parent directory.
+- download_weather_hourly.py
+  Earlier attempt at downloading weather data before ISD-based workflow.
 
-Notes:
-- Archived files are not executed or imported by the active project.
-- Files here may be removed in future cleanups once no longer needed for reference.
+- weather_aggregate_hourly_lga.py
+  Legacy LGA-only aggregation script replaced by weather_aggregate_hourly.py.
+
+- load_isd_hourly.py
+  Older ISD parsing logic superseded by weather_build_interim.py.
+
+- nan_investigation.py
+  Diagnostic script used to examine missing ISD hours and validate outages.
