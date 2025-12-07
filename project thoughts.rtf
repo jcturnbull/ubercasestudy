@@ -1,0 +1,16 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2761
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 Some thoughts while working on weather data\
+\
+- ridership demand is going to have seasonality on time of day, day of week, and time of year\
+- mta swipership might also have this seasonality, but there could be some differences (demand is relatively higher vs MTA late at night due to safety concerns, etc). Recall that MTA swipe data was used to discuss if New York was \'93back\'94 post covid, there was a dataset at least on Bloomberg, if not elsewhere.\
+- this might make temperature changes and ridership seem directly correlated, as temps decrease at night and so does raw rider requests, when in fact on a relative basis, they are inversely correlated (relatively colder temps yields relatively more rides), while also relatively hotter temps yields relatively more rides (again back to direct correlation). \
+- ok, thought about using mta data, but it ends in 2024. \
+- could also investigate longer time series to get better trend info, but no congestion pricing, which I think is a regime shift.\
+- mta normalization vs seasonality adjustments, but maybe weather also needs seasonality adjustments? Something to think about for sure. Moving on for now to actually calculating the data and plotting it against taxi pickups hourly\
+- comfort buckets: future enhancement}
