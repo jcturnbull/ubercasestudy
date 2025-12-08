@@ -232,73 +232,114 @@ def add_derived_metrics(df: pd.DataFrame) -> pd.DataFrame:
     else:
         df["pickup_wait_time_sec"] = pd.NA
         df["pickup_wait_time_mmss"] = None
-
+    
     # Discard flag: bad wait time OR invalid congestion fees OR negative driver pay
-
+    
     # 1) Negative or missing wait time
-    discard_mask = (
+    mask_neg_wait = (
         df["pickup_wait_time_sec"].isna() |
         (df["pickup_wait_time_sec"] < 0)
     )
+    discard_mask = mask_neg_wait.copy()
 
-    # Invalid congestion_surcharge (allowed: 0, 0.75, 2.75)
+    # 2) Invalid congestion_surcharge (allowed: 0, 0.75, 2.75)
+    mask_invalid_cong = pd.Series(False, index=df.index)
     if "congestion_surcharge" in df.columns:
         cong = pd.to_numeric(df["congestion_surcharge"], errors="coerce")
         valid_cong_vals = {0.0, 0.75, 2.75}
-        invalid_cong = cong.notna() & ~cong.isin(valid_cong_vals)
-        discard_mask |= invalid_cong
+        mask_invalid_cong = cong.notna() & ~cong.isin(valid_cong_vals)
+        discard_mask |= mask_invalid_cong
 
-    # Invalid cbd_congestion_fee (allowed: 0, 1.50)
+    # 3) Invalid cbd_congestion_fee (allowed: 0, 1.50)
+    mask_invalid_cbd = pd.Series(False, index=df.index)
     if "cbd_congestion_fee" in df.columns:
         cbd = pd.to_numeric(df["cbd_congestion_fee"], errors="coerce")
         valid_cbd_vals = {0.0, 1.50}
-        invalid_cbd = cbd.notna() & ~cbd.isin(valid_cbd_vals)
-        discard_mask |= invalid_cbd
+        mask_invalid_cbd = cbd.notna() & ~cbd.isin(valid_cbd_vals)
+        discard_mask |= mask_invalid_cbd
 
-    # Negative driver pay
+    # 4) Negative driver pay
+    mask_neg_driver_pay = pd.Series(False, index=df.index)
     if "driver_pay" in df.columns:
         driver_pay_num = pd.to_numeric(df["driver_pay"], errors="coerce")
-        discard_mask |= (driver_pay_num < 0)
+        mask_neg_driver_pay = driver_pay_num < 0
+        discard_mask |= mask_neg_driver_pay
 
-    # NEGATIVE DISTANCE
+    # 5) Negative distance
+    mask_neg_miles = pd.Series(False, index=df.index)
     if "trip_miles" in df.columns:
         miles_num = pd.to_numeric(df["trip_miles"], errors="coerce")
-        discard_mask |= (miles_num < 0)
+        mask_neg_miles = miles_num < 0
+        discard_mask |= mask_neg_miles
 
-    # NEGATIVE TRIP TIME
+    # 6) Negative trip time
+    mask_neg_trip_time = pd.Series(False, index=df.index)
     if "trip_time" in df.columns:
         ttime_num = pd.to_numeric(df["trip_time"], errors="coerce")
-        discard_mask |= (ttime_num < 0)
+        mask_neg_trip_time = ttime_num < 0
+        discard_mask |= mask_neg_trip_time
 
-    # NEGATIVE TIPS
+    # 7) Negative tips
+    mask_neg_tips = pd.Series(False, index=df.index)
     if "tips" in df.columns:
         tips_num = pd.to_numeric(df["tips"], errors="coerce")
-        discard_mask |= (tips_num < 0)
-    
-    # Ensure datetime types
+        mask_neg_tips = tips_num < 0
+        discard_mask |= mask_neg_tips
+
+    # 8) Temporal ordering checks:
+    #    We enforce:
+    #      request <= pickup <= dropoff
+    #    and for on_scene, only fail when pickup is before on_scene (pu < ons).
     req = df["request_datetime"]
     ons = df["on_scene_datetime"]
     pu  = df["pickup_datetime"]
     do  = df["dropoff_datetime"]
 
-    # 1. request < pickup
-    invalid_req_pu = req.notna() & pu.notna() & (req >= pu)
-    discard_mask |= invalid_req_pu
-
-    # 2. pickup < dropoff
-    invalid_pu_do = pu.notna() & do.notna() & (pu >= do)
-    discard_mask |= invalid_pu_do
-
-    # 3. request < on_scene < pickup (but only if on_scene exists)
     has_ons = ons.notna()
 
-    invalid_req_ons = has_ons & req.notna() & (req >= ons)
-    invalid_ons_pu  = has_ons & pu.notna()  & (ons >= pu)
+    # request vs pickup: equality allowed, discard only if request > pickup
+    mask_invalid_req_pu = req.notna() & pu.notna() & (req > pu)
 
-    discard_mask |= invalid_req_ons
-    discard_mask |= invalid_ons_pu
+    # pickup vs dropoff: equality NOT allowed, discard if pickup >= dropoff
+    mask_invalid_pu_do = pu.notna() & do.notna() & (pu >= do)
     
+    # Drop this constraint entirely:
+    # mask_invalid_req_ons = has_ons & req.notna() & (req >= ons)
+    
+    # Only treat as invalid if pickup is before on_scene (backwards)
+    mask_invalid_ons_pu = has_ons & pu.notna() & (pu < ons)
+
+    mask_time_order = (
+        mask_invalid_req_pu |
+        mask_invalid_pu_do  |
+        mask_invalid_ons_pu
+    )
+
+    discard_mask |= mask_time_order
+
+    # Master discard flag
     df["discard"] = discard_mask.astype("int8")
+
+    # Numeric discard_reason (0 = keep, 1–8 = first failing rule)
+    # Priority order:
+    #   1 neg/missing wait
+    #   2 invalid congestion_surcharge
+    #   3 invalid cbd_congestion_fee
+    #   4 negative driver_pay
+    #   5 negative trip_miles
+    #   6 negative trip_time
+    #   7 negative tips
+    #   8 temporal ordering violation
+    df["discard_reason"] = 0
+
+    df.loc[mask_neg_wait,                        "discard_reason"] = 1
+    df.loc[(df["discard_reason"] == 0) & mask_invalid_cong,  "discard_reason"] = 2
+    df.loc[(df["discard_reason"] == 0) & mask_invalid_cbd,   "discard_reason"] = 3
+    df.loc[(df["discard_reason"] == 0) & mask_neg_driver_pay,"discard_reason"] = 4
+    df.loc[(df["discard_reason"] == 0) & mask_neg_miles,     "discard_reason"] = 5
+    df.loc[(df["discard_reason"] == 0) & mask_neg_trip_time, "discard_reason"] = 6
+    df.loc[(df["discard_reason"] == 0) & mask_neg_tips,      "discard_reason"] = 7
+    df.loc[(df["discard_reason"] == 0) & mask_time_order,    "discard_reason"] = 8
 
     # 2. Trip time in MM:SS
     if "trip_time" in df.columns:
@@ -392,12 +433,10 @@ def process_month(month_code: str) -> Path:
     if month_code == "03":
         df = fix_march_dst_pickups(df)
 
-    # Add trip-level metrics
+    # Add trip-level metrics (including discard + discard_reason)
     df = add_derived_metrics(df)
-    
-    # Reduce file size by discarding bad rows and non-airport trips
-    df = df[df["discard"] == 0]
-    
+
+    # Reduce file size: keep only airport trips, but retain discard rows for QA
     if "is_airport_trip" in df.columns:
         df = df[df["is_airport_trip"] == 1]
 

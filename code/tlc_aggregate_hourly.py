@@ -156,9 +156,9 @@ def aggregate_hourly(
     )
 
     # Request is the primary hour key
-    df["request_hour_dt"] = df["request_datetime"].dt.floor("H")
-    df["pickup_hour_dt"] = df["pickup_datetime"].dt.floor("H")
-    df["dropoff_hour_dt"] = df["dropoff_datetime"].dt.floor("H")
+    df["request_hour_dt"] = df["request_datetime"].dt.floor("h")
+    df["pickup_hour_dt"] = df["pickup_datetime"].dt.floor("h")
+    df["dropoff_hour_dt"] = df["dropoff_datetime"].dt.floor("h")
 
     # -----------------------------------------------------------------------
     # Fare and numeric geometry/time
@@ -322,6 +322,10 @@ def main(
 
     print(f"Reading trips from: {input_path}")
     df = pd.read_parquet(input_path)
+
+    # Pre-step: drop discarded rows (bad QC) before aggregation
+    if "discard" in df.columns:
+        df = df[df["discard"] == 0]
 
     hourly = aggregate_hourly(df, wait_time_col=wait_time_col)
 
