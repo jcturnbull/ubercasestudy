@@ -1,0 +1,63 @@
+## idea generation:
+<some notes here>
+
+## data notes
+
+get weather data
+cross-check daily precipitation amounts against online sources
+realize precipitation start conditions are double counted within hourly block observations
+cross-check again to verify precipitation
+realize data is in UTC -> could pose a problem for TLC data (idk the format yet)
+some missing data, mostly in february.
+for the presentation: show / link photos together showing my progression to verifying the data, with Dec 31 2024 as the example for rainfal that evening.
+raw -> ID right codes -> sum hourly to cross-check with 24h -> compare against online data. inch/mm conversion.
+
+tlc data
+in local time, with daylight savings applied.
+well, mostly. some 02:00-am hour information for march 9th, which is incorrect, obviously.
+DST fixed.
+sometimes the congestion fee (old one) is 5.50, which doesnt make sense. this happened 3x in 20m datapoints in march, and each time the congestion fee doubled. discarded.
+sometimes driver pay is negative - this corrects when tolls are paid back and tips are included, with a floor (at least in march) or 0.0. Discarded.
+base fare is sometimes negative, i guess this is hvfhv eating the cost for market share or retention reasons
+discard negative miles, negative trip time, and negative tips
+full discard list:
+- negative or missing wait time
+- invalid congestion surcharges
+- invalid CBD fee
+- negative driver pay
+- negative miles
+- negative trip_time
+- negative tips
+- temporal ordering violations
+
+LGA has roughly 2-3mm pax a month
+JFK has double, somewhere in the 6mm ballpark
+-> 1.5mm laguardia pickups + dropoffs in march seems reasonable?
+-> great market penetration, perhaps limited growth from new riders, but reliable passengers might be committed and be more inelastic
+
+choose to look at request_hour buckets, not pickup, because we primarily want to measure demand from riders to measure weather impacts.
+
+## metrics
+ignoring median for fares, for now. average is probably good over the large dataset. i could always get the summary statistics. 
+i could always include distributions into the appendix of these metrics.
+port authority published how many people flew through 8 months through LGA/EWR/JFK here https://www.panynj.gov/port-authority/en/press-room/press-release-archives/2025-press-releases/port-authority-airports-soar-to-busiest-month-ever-with-all-time.html
+so can measure uber/lyft penetration, somewhat, but not totally, as not all uber/lyfts are TLC at EWR pickup. So we can get a lower bound.
+
+## presentation ideas
+clickbait title, answered by "no" (probably) ex: can Uber raise airport fares?
+describe the value proposition Uber offers (safety, comfort, etc)
+present alternatives to Uber (MTA)
+frame approach (i wanted to look at this because xyz, e.g. it's personal to me)
+briefly present upside / risks of this (e.g. XX YYY is the head of airports)
+briefly present challenges (data gathering, verification)
+present results
+...
+then have backup slides for all the details, in the appendix
+what data i used
+every single type of challenge for weather and verification
+challenges of tlc data, and what i threw out to look at (and how many).
+note: look at how many lga rides are impacted by my discard rules (not many, on a relative basis, i bet, but i need the number, maybe even by category)
+what i thought about metrics-wise, and what i didn't end up using
+
+maybe work in the paper about comparing prices, note even my mom talked to me about this from the news. could be anecdotal evidence for Uber being able to raise rates (most don't compare).
+probably need uber market share for that, though.

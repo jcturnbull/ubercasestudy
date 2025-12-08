@@ -1,0 +1,2 @@
+looked at general precipitation, not separating rain and snow, there might be different impacts based on type (due to temperature, road traffic, etc)
+data is available through 8/27/2025 - i want to focus on 2025 due to congestion pricing, so this is my limit.

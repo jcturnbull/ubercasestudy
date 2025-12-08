@@ -1,0 +1,43 @@
+Trying to integrate aviation-grade landing datasets introduces cost, complexity, engineering overhead, and time that provide minimal incremental signal for what you actually need to demonstrate to David.
+
+You’re not being evaluated on airport-traffic domain expertise — you’re being evaluated on:
+
+Structuring messy public data
+
+Generating hypotheses
+
+Measuring interdependencies
+
+Identifying opportunities + risks from time-series evidence
+
+Communicating constraints cleanly
+
+Using TLC pickup counts near the airports as a proxy for airport arrivals is entirely valid and defensible.
+
+How to frame this cleanly as a methodological limitation
+
+You say (in your deck or verbal narrative):
+
+“Ideally, I would merge hourly flight-arrival data for JFK/LGA to measure airport-driven rideshare demand.”
+
+“However, high-resolution landing datasets are commercial (OAG, Cirium, FlightAware, FlightRadar24 BI) and have multi-day lead times and non-trivial cost.”
+
+“Given the constraints of the exercise, I use TLC pickup volumes at airport-zone geographies as a proxy for airport traffic.”
+
+“This proxy is appropriate for analyzing relative patterns — spikes, weather sensitivity, YoY changes — though it cannot disentangle landing volume from traveler mode choice.”
+
+“I note this explicitly as a limitation in any causal interpretation.”
+
+This reads mature, resource-aware, and pragmatic — exactly what BizOps leaders look for.
+
+Why TLC pickups are a legitimate proxy (and you can defend it)
+
+TLC HVFHV Pickup Location IDs include airport-designated zones.
+
+These zones produce clear demand pulses aligned with flight schedules.
+
+You are interested in how weather, disruptions, or seasonality influence rideshare demand originating from airports.
+
+Even without knowing the exact number of aircraft landings, the pickup volume reflects realized ground-transport demand, which is what Uber cares about.
+
+Airport arrivals → ground demand → HVFHV pickup counts
