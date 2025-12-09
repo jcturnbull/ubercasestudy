@@ -298,7 +298,10 @@ def aggregate_hourly(
     # -----------------------------------------------------------------------
     hourly = hourly.sort_index().reset_index()  # request_hour_dt now a column
     hourly = hourly.rename(columns={"request_hour_dt": "datetime_hour"})
-
+    
+    # Drop any hour before Jan 1, 2025
+    hourly = hourly[hourly["datetime_hour"] >= pd.Timestamp("2025-01-01")]
+    
     hourly["date"] = hourly["datetime_hour"].dt.date
     hourly["request_hour"] = hourly["datetime_hour"].dt.hour  # 0–23 int
 

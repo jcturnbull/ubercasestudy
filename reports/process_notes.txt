@@ -59,7 +59,33 @@ i could always include distributions into the appendix of these metrics.
 port authority published how many people flew through 8 months through LGA/EWR/JFK here https://www.panynj.gov/port-authority/en/press-room/press-release-archives/2025-press-releases/port-authority-airports-soar-to-busiest-month-ever-with-all-time.html
 so can measure uber/lyft penetration, somewhat, but not totally, as not all uber/lyfts are TLC at EWR pickup. So we can get a lower bound.
 
+## hypotheses
+1. more extreme wind_chill_diff (wind chill - temp) leads to more demand on an hour-of-the-week basis
+2. heat index diff (heat index - temp) " "
+3. rainfall also, regressing on rainfall amount, and binaries rain_flag and heavy_rain. expect more rain to have more demand.
+then move on to average base fare in the same conditions. this is to target the "how to make money"
+theory: Uber could charge more for faster trips as part of a value-add proposition during slower periods, when people still want comfort
+new hypothesis: next-hour demand depends on current hour's rain, ex: my chicago trip was delayed but no rain when i landed. crowded airport.
 
+## prelim results
+- each 1 deg F that wind chill falls below air temp, hourly demand increases by 2.4 trips, after seasonality adjustments. colder than expected results in more trips
+- heat index is 2.1 trips per hour per additional head-index higher than temp, but not statistically significant. note: way fewer heat index hours than wind chill (1787 vs 514)
+- For each additional 1 mm of precipitation per hour, seasonality-adjusted demand at LGA drops by ~10–11 trips.
+- ground stops, arrival reductions, diversions, and cancellations could lead to fewer planes landing thus fewer passengers to request rides. the true effect might be a relative increase compared to arriving passengers, but i don't have that data
+- airport ride demand depends on planes, not weather, at the end of the day. slow arrivals suppress ride volume. i hadn't really considered this. perhaps better effects will show up on a fare basis for Uber, to show higher willingness to pay. enhancement: internal data of price check vs booked rides in the rain.
+- when i talked to people about this, they said "of course rain causes more ubers!" so this seems to be the counterintuitive result, at least based on current data.
+- Any rain at all reduces LGA hourly demand by ~54 rides after removing seasonality. (binary flag)
+- Heavy rain slashes LGA hourly demand by ~140 rides relative to normal conditions due to operational slowdowns.
+- Rain’s effects peak with a 1-hour delay, potentially consistent with the operational response of arriving flights.
+- Heavy rain produces massive demand deficits (~100+ rides), again strongest (but barely) one hour later.
+- quadratic testing, wind chill no meaningful result, heat index same, precipitation had significant but extremely small impact, interpretable as no clear evidence of quadratic relationship. this makes sense as demand is arrival constrained moreso than preference influenced.
+
+## limitations and enhancements
+- get historical data on an hourly basis for average temp on an hour-level for every day of the year to compare the current temp vs baseline. no time now.
+- vacation flags. noticed Sunday 1/19 before MLK Jr holiday, demand was down. probably looked more like a saturday than a typical sunday. can show the chart here.
+- further enhancement: rain's impact on manhattan travel.
+- enhancement: internal data of price check vs booked rides in the rain.
+- Rain intensity is sparse; heavy-rain regressions rely on low sample. heavy_rain flag is only 28 hours, for example. rain flag is 385. total precip is 695.9. verified against daily summary (692.404, close enough with rounding from 27.26 inches)
 
 ## presentation ideas
 clickbait title, answered by "no" (probably) ex: can Uber raise airport fares?

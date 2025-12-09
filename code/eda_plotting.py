@@ -132,6 +132,15 @@ CURFEW_HOURS = set(range(2, 7))  # 2,3,4,5,6
 
 PRECIP_COL = "precip_1h_mm_total"
 
+DAY_COLOR_MAP = {
+    0: "tab:blue",    # Monday
+    1: "tab:orange",  # Tuesday
+    2: "tab:green",   # Wednesday
+    3: "tab:red",     # Thursday
+    4: "tab:purple",  # Friday
+    5: "tab:brown",   # Saturday
+    6: "tab:pink",    # Sunday
+}
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -272,6 +281,33 @@ def _scatter_xy(
     else:
         plt.show()
     plt.close(fig)
+
+
+def _normalize_dow(dow_spec) -> int:
+    """
+    Normalize a day-of-week spec to 0–6 (Monday=0).
+    Accepts:
+      - int 0–6
+      - full name: 'Monday'
+      - short name: 'Mon', 'mon', etc.
+    """
+    if isinstance(dow_spec, int):
+        if 0 <= dow_spec <= 6:
+            return dow_spec
+        raise ValueError(f"Day-of-week int out of range 0–6: {dow_spec}")
+
+    s = str(dow_spec).strip().lower()
+    # Try full names
+    for i in range(7):
+        if s == calendar.day_name[i].lower():
+            return i
+    # Try 3-letter abbreviations
+    for i in range(7):
+        if s == calendar.day_name[i][:3].lower():
+            return i
+
+    raise ValueError(f"Unrecognized day-of-week spec: {dow_spec!r}")
+
 
 
 # ---------------------------------------------------------------------------
@@ -1199,6 +1235,155 @@ def plot_fare_rate_vs_trips_hour_of_week(
     plt.close(fig)
 
 
+def plot_day_vs_weekday_avg(
+    df: pd.DataFrame,
+    target_date,
+    compare_dow1,
+    compare_dow2=None,
+    time_col: str = DEFAULT_TIME_COL,
+    hour_col: str = "request_hour",
+    count_col: str = "request_count",
+    save: bool = False,
+    out_dir: Path | None = None,
+) -> None:
+    """
+    Compare a specific calendar date's hourly demand profile (0–23)
+    against one or two weekday-average profiles.
+
+    Example:
+        plot_day_vs_weekday_avg(
+            df,
+            target_date="2025-01-19",
+            compare_dow1="Sunday",
+            compare_dow2="Saturday",
+        )
+    """
+    # Basic column checks
+    if time_col not in df.columns or hour_col not in df.columns:
+        print("Missing time/hour columns; skipping day-vs-weekday plot.")
+        return
+    if count_col not in df.columns:
+        print(f"Missing {count_col}; skipping day-vs-weekday plot.")
+        return
+
+    # Output dir
+    if save:
+        if out_dir is None:
+            out_dir = PLOTS_DIR
+        out_dir = _ensure_out_dir(out_dir)
+
+    # Normalize target date and DOW
+    target_ts = pd.to_datetime(target_date)
+    target_date_only = target_ts.date()
+
+    d = df.copy()
+    d["dow"] = d[time_col].dt.dayofweek          # 0 = Monday ... 6 = Sunday
+    d["date_only"] = d[time_col].dt.date         # pure Python date for each row
+
+    # Mask for the target calendar date
+    day_mask = d["date_only"] == target_date_only
+    if not day_mask.any():
+        print(f"No data found for date {target_date_only}; skipping.")
+        return
+
+    target_dow = target_ts.dayofweek
+    target_dow_name = calendar.day_name[target_dow]
+
+    # Hourly profile for the specific day (0–23)
+    day_profile = (
+        d.loc[day_mask]
+        .groupby(hour_col)[count_col]
+        .sum()
+        .reindex(range(24), fill_value=0)
+    )
+
+    # Resolve comparison weekdays
+    dow1 = _normalize_dow(compare_dow1)
+    dow1_name = calendar.day_name[dow1]
+
+    dow2 = None
+    dow2_name = None
+    if compare_dow2 is not None:
+        dow2 = _normalize_dow(compare_dow2)
+        dow2_name = calendar.day_name[dow2]
+
+    # Helper: average hourly profile for a given DOW (0–23)
+    def _avg_profile_for_dow(dow: int) -> pd.Series:
+        mask = d["dow"] == dow
+        # Exclude the target date from the baseline
+        mask &= ~day_mask
+        if not mask.any():
+            return pd.Series(0.0, index=range(24))
+        return (
+            d.loc[mask]
+            .groupby(hour_col)[count_col]
+            .mean()
+            .reindex(range(24), fill_value=0.0)
+        )
+
+    avg_profile_1 = _avg_profile_for_dow(dow1)
+    avg_profile_2 = _avg_profile_for_dow(dow2) if dow2 is not None else None
+
+    hours = np.arange(24)
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    # Real day: solid gray line with markers in true DOW color
+    real_color = DAY_COLOR_MAP.get(target_dow, "tab:gray")
+    ax.plot(
+        hours,
+        day_profile.values,
+        color="0.4",
+        linewidth=1.6,
+        label=f"{target_date_only} ({target_dow_name})",
+    )
+    ax.scatter(
+        hours,
+        day_profile.values,
+        color=real_color,
+        s=25,
+        alpha=0.9,
+    )
+
+    # Baseline 1: black dashed
+    ax.plot(
+        hours,
+        avg_profile_1.values,
+        linestyle="--",
+        linewidth=1.0,
+        color="black",
+        label=f"Avg {dow1_name}",
+    )
+
+    # Baseline 2: blue dashed (optional)
+    if avg_profile_2 is not None:
+        ax.plot(
+            hours,
+            avg_profile_2.values,
+            linestyle="--",
+            linewidth=1.0,
+            color="tab:blue",
+            label=f"Avg {dow2_name}",
+        )
+
+    title = f"Total requests on {target_date_only} vs weekday averages"
+    ax.set_title(title)
+    ax.set_xlabel("Hour of day (0–23)")
+    ax.set_ylabel("Total requests")
+    ax.set_xticks(range(24))
+    ax.grid(True, alpha=0.3)
+
+    ax.legend(loc="upper left", fontsize=8, frameon=False)
+    fig.tight_layout()
+
+    if save:
+        date_str = target_ts.strftime("%Y%m%d")
+        fname = f"day_vs_weekday_avg_{date_str}.png"
+        fig.savefig(out_dir / fname, dpi=150, bbox_inches="tight")
+    else:
+        plt.show()
+
+    plt.close(fig)
 
 
 
@@ -1438,6 +1623,41 @@ def run_eda(
     plot_requests_by_hour_of_week(df, save=save_plots, out_dir=out_dir, curfew=curfew)
     plot_base_fare_by_hour_of_week(df, save=save_plots, out_dir=out_dir, curfew=curfew)
     plot_fare_rate_vs_trips_hour_of_week(df, save=save_plots, out_dir=out_dir, curfew=curfew)
+
+
+def run_day_vs_weekday_from_file(
+    file_name: str,
+    target_date,
+    compare_dow1,
+    compare_dow2=None,
+    curfew: bool = True,
+    save_plots: bool = False,
+) -> None:
+    """
+    Convenience wrapper:
+      - Reads processed file
+      - Applies optional curfew filter (drop hours 2–6)
+      - Runs ONLY the day-vs-weekday comparison plot.
+    """
+    input_path = PROCESSED_DIR / file_name
+    df = _read_input(input_path)
+
+    if curfew and "request_hour" in df.columns:
+        df = df[~df["request_hour"].isin(CURFEW_HOURS)].copy()
+
+    if DEFAULT_TIME_COL in df.columns:
+        df = df.sort_values(DEFAULT_TIME_COL)
+
+    plot_day_vs_weekday_avg(
+        df,
+        target_date=target_date,
+        compare_dow1=compare_dow1,
+        compare_dow2=compare_dow2,
+        save=save_plots,
+        out_dir=None,
+    )
+    print(f"Day vs weekday comparison complete for {target_date} from: {input_path}")
+
 
 
 # ---------------------------------------------------------------------------
