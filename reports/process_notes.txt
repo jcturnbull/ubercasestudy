@@ -79,6 +79,8 @@ new hypothesis: next-hour demand depends on current hour's rain, ex: my chicago 
 - Rain’s effects peak with a 1-hour delay, potentially consistent with the operational response of arriving flights.
 - Heavy rain produces massive demand deficits (~100+ rides), again strongest (but barely) one hour later.
 - quadratic testing, wind chill no meaningful result, heat index same, precipitation had significant but extremely small impact, interpretable as no clear evidence of quadratic relationship. this makes sense as demand is arrival constrained moreso than preference influenced.
+- heat mechanism has no real effect
+- wind chill has noticeable effect, both on absolute and relative basis
 
 ## limitations and enhancements
 - get historical data on an hourly basis for average temp on an hour-level for every day of the year to compare the current temp vs baseline. no time now.
@@ -87,6 +89,10 @@ new hypothesis: next-hour demand depends on current hour's rain, ex: my chicago 
 - enhancement: internal data of price check vs booked rides in the rain.
 - Rain intensity is sparse; heavy-rain regressions rely on low sample. heavy_rain flag is only 28 hours, for example. rain flag is 385. total precip is 695.9. verified against daily summary (692.404, close enough with rounding from 27.26 inches)
 - no supply data, so hard to verify root cause of margin effects
+- hours with rain and wind chill is 145
+- count of rain in consecutive hours is 263
+- count of rain in consecutive hours with wind chill in the current hour is 113, not big
+
 
 ## presentation ideas
 clickbait title, answered by "no" (probably) ex: can Uber raise airport fares?
