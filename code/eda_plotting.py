@@ -125,6 +125,11 @@ DEFAULT_SCATTER_PAIRS = [
     ("avg_rider_total", "request_count"),
     ("avg_rider_total", "avg_driver_pay"),
     ("driver_pay_pct_of_base_fare", "avg_rider_total"),
+    
+    ("wind_chill_f", "avg_base_passenger_fare"),
+    ("wind_chill_f", "avg_driver_pay"),
+    ("heat_index_f", "avg_base_passenger_fare"),
+    ("heat_index_f", "avg_driver_pay"),
 ]
 
 # Hours to drop when curfew=True (LaGuardia midnight–6am)

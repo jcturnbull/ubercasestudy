@@ -86,6 +86,7 @@ new hypothesis: next-hour demand depends on current hour's rain, ex: my chicago 
 - further enhancement: rain's impact on manhattan travel.
 - enhancement: internal data of price check vs booked rides in the rain.
 - Rain intensity is sparse; heavy-rain regressions rely on low sample. heavy_rain flag is only 28 hours, for example. rain flag is 385. total precip is 695.9. verified against daily summary (692.404, close enough with rounding from 27.26 inches)
+- no supply data, so hard to verify root cause of margin effects
 
 ## presentation ideas
 clickbait title, answered by "no" (probably) ex: can Uber raise airport fares?
