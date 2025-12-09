@@ -37,11 +37,29 @@ JFK has double, somewhere in the 6mm ballpark
 
 choose to look at request_hour buckets, not pickup, because we primarily want to measure demand from riders to measure weather impacts.
 
+## eda
+after merging the data, did exploratoy data analysis, such as plotting variables over time and correlations of variables.
+laguardia curfew 12am-6am. drop 2-6 hours, which is all rides after 1:59:59 and before 07:00:00, so probably can drop those from the modeling dataset
+shaded Friday 19:00 (5pm) → Monday 06:00 (6am) - weekend color.
+
+## seasonality
+Seasonality adjustment is mandatory if you want a clean estimate of weather’s causal impact rather than confounding patterns like:
+- Airport demand surges during AM/PM peaks
+- Friday evening + Sunday evening spikes (airport return patterns)
+- Monthly travel cycles
+- Holiday travel patterns
+- Day-of-week business travel norms
+- Summer tourism vs winter lull
+If you don’t remove or model these, your regression will attribute normal seasonal variation to weather, inflating or deflating your weather coefficients.
+note: I like holiday flags, but we should be extremely specific, maybe we can save this for later. pocket it as a potential limitation or enhancement.
+
 ## metrics
 ignoring median for fares, for now. average is probably good over the large dataset. i could always get the summary statistics. 
 i could always include distributions into the appendix of these metrics.
 port authority published how many people flew through 8 months through LGA/EWR/JFK here https://www.panynj.gov/port-authority/en/press-room/press-release-archives/2025-press-releases/port-authority-airports-soar-to-busiest-month-ever-with-all-time.html
 so can measure uber/lyft penetration, somewhat, but not totally, as not all uber/lyfts are TLC at EWR pickup. So we can get a lower bound.
+
+
 
 ## presentation ideas
 clickbait title, answered by "no" (probably) ex: can Uber raise airport fares?
