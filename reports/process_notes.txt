@@ -102,6 +102,7 @@ Economics
 - count of rain in consecutive hours with wind chill in the current hour is 113, not big
 - did not see how much changing the threshold for heavy rain changes the estimated coefficient or the direction. perhaps heavy rain should be higher than 5mm per hour. moderate rain is 2.5-7.5mm/h, and 7.6mm+ is heavy, i split the difference of moderate rain to binary classify rather than three options.
 - since month is a residualization variable (alongside hour of the week), temperature could become partially redundant
+- nonlinear cross terms
 
 ## presentation ideas
 clickbait title, answered by "no" (probably) ex: can Uber raise airport fares?
