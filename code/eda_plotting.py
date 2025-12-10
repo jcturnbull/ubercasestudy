@@ -151,7 +151,12 @@ DAY_COLOR_MAP = {
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _ensure_out_dir(out_dir: Path) -> Path:
+def _ensure_out_dir(out_dir: Path | str) -> Path:
+    """
+    Ensure output directory exists; accept either Path or string.
+    """
+    if isinstance(out_dir, str):
+        out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     return out_dir
 
@@ -866,7 +871,7 @@ def plot_requests_by_hour_of_week(
     # Legend above chart, 7 day names + 1 ref line → wraps as needed
     ax.legend(
         loc="upper center",
-        bbox_to_anchor=(0.5, -0.15),
+        bbox_to_anchor=(0.5, -0.22),
         ncol=7,
         fontsize=8,
         frameon=False
@@ -973,7 +978,7 @@ def plot_base_fare_by_hour_of_week(
 
     ax.legend(
         loc="upper center",
-        bbox_to_anchor=(0.5, -0.15),
+        bbox_to_anchor=(0.5, -0.22),
         ncol=7,
         fontsize=8,
         frameon=False
@@ -1115,7 +1120,7 @@ def plot_fare_rate_vs_trips_hour_of_week(
 
     ax.legend(
         loc="upper center",
-        bbox_to_anchor=(0.5, -0.15),
+        bbox_to_anchor=(0.5, -0.22),
         ncol=7,
         fontsize=8,
         frameon=False
@@ -1168,7 +1173,7 @@ def plot_fare_rate_vs_trips_hour_of_week(
 
     ax.legend(
         loc="upper center",
-        bbox_to_anchor=(0.5, -0.15),
+        bbox_to_anchor=(0.5, -0.22),
         ncol=7,
         fontsize=8,
         frameon=False
@@ -1221,7 +1226,7 @@ def plot_fare_rate_vs_trips_hour_of_week(
 
     ax.legend(
         loc="upper center",
-        bbox_to_anchor=(0.5, -0.15),
+        bbox_to_anchor=(0.5, -0.22),
         ncol=7,
         fontsize=8,
         frameon=False
@@ -1238,6 +1243,195 @@ def plot_fare_rate_vs_trips_hour_of_week(
     else:
         plt.show()
     plt.close(fig)
+
+
+def plot_metric_by_hour_of_week(
+    df: pd.DataFrame,
+    metric_col: str,
+    agg: str = "mean",
+    time_col: str = DEFAULT_TIME_COL,
+    save: bool = False,
+    out_dir: Path | None = None,
+    curfew: bool = False,
+    ylabel: str | None = None,
+    title: str | None = None,
+    filename: str | None = None,
+    line_color: str = "dimgray",
+) -> None:
+    """
+    Generic hour-of-week (0–167) plot for a single metric.
+
+    - Aggregates `metric_col` by hour_of_week with the given `agg`.
+    - Draws a continuous line (line_color) and day-colored points.
+    - Shades weekend (Fri 19:00 -> Mon 06:00).
+    - Legend is placed below the x-axis in 7 columns.
+
+    This is intended to be reused for base fare, driver pay, margin, etc.
+    """
+    if time_col not in df.columns or metric_col not in df.columns:
+        print(f"Missing {time_col} or {metric_col}; skipping hour-of-week plot.")
+        return
+
+    if save:
+        if out_dir is None:
+            out_dir = PLOTS_DIR
+        out_dir = _ensure_out_dir(out_dir)
+
+    d = df.copy()
+    d["dow"] = d[time_col].dt.dayofweek        # 0 = Monday ... 6 = Sunday
+    d["hour"] = d[time_col].dt.hour            # 0–23
+    d["hour_of_week"] = d["dow"] * 24 + d["hour"]  # 0–167
+
+    # Optional curfew filter at this level (if not already applied upstream)
+    if curfew and "request_hour" in d.columns:
+        d = d[~d["request_hour"].isin(CURFEW_HOURS)].copy()
+
+    # Aggregate metric by hour_of_week
+    grouped = (
+        d.groupby("hour_of_week", as_index=False)[metric_col]
+        .agg(agg)
+        .rename(columns={metric_col: "metric"})
+        .sort_values("hour_of_week")
+    )
+
+    # Ensure all 0..167 present
+    all_hours = pd.DataFrame({"hour_of_week": np.arange(168)})
+    grouped = all_hours.merge(grouped, on="hour_of_week", how="left")
+    grouped["metric"] = grouped["metric"].astype(float)
+
+    # Day-of-week for each hour_of_week
+    grouped["dow"] = grouped["hour_of_week"] // 24
+
+    # X-ticks at day boundaries
+    xticks = [24 * d for d in range(8)]
+    xtick_labels = [calendar.day_name[d] for d in range(7)] + ["Mon (next week)"]
+
+    # Weekend shading: Fri 19:00 -> Mon 06:00
+    weekend_start = 4 * 24 + 19   # 115
+    weekend_end1 = 7 * 24         # 168
+    weekend_end2 = 6              # 6
+
+    fig, ax = plt.subplots(figsize=(14, 5))
+
+    # Continuous line
+    ax.plot(
+        grouped["hour_of_week"],
+        grouped["metric"],
+        linewidth=1.0,
+        color=line_color,
+        zorder=1,
+    )
+
+    # Color-coded points by DOW (same color order as before)
+    for dow in range(7):
+        mask = grouped["dow"] == dow
+        if not mask.any():
+            continue
+        ax.scatter(
+            grouped.loc[mask, "hour_of_week"],
+            grouped.loc[mask, "metric"],
+            s=15,
+            alpha=0.8,
+            label=calendar.day_name[dow],
+            zorder=2,
+        )
+
+    if title is None:
+        title = f"{metric_col} by hour of week"
+    ax.set_title(title)
+
+    if ylabel is None:
+        ylabel = metric_col
+    ax.set_ylabel(ylabel)
+
+    ax.set_xlabel("Hour of week (0–167)")
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xtick_labels, rotation=45, ha="right")
+    ax.grid(True, alpha=0.3)
+
+    # Weekend shading
+    ax.axvspan(weekend_start, weekend_end1 - 1, alpha=0.12)
+    ax.axvspan(0, weekend_end2, alpha=0.12)
+
+    # Legend below x-axis, 7 columns (what you asked for)
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.22),
+        ncol=7,
+        fontsize=8,
+        frameon=False,
+    )
+
+    fig.tight_layout()
+
+    if save:
+        if filename is None:
+            filename = f"{metric_col}_by_hour_of_week.png"
+        fig.savefig(out_dir / filename, dpi=150, bbox_inches="tight")
+    else:
+        plt.show()
+
+    plt.close(fig)
+
+
+def plot_total_base_fare_by_hour_of_week(
+    df: pd.DataFrame,
+    save: bool = False,
+    out_dir: Path | None = None,
+    curfew: bool = False,
+) -> None:
+    """
+    Average total base passenger fare by hour of week (0–167).
+
+    - Uses base_passenger_fare_sum at the hourly level.
+    - Aggregates with mean → expected total hourly revenue for that hour-of-week.
+    - Dark green line, day-colored points, weekend shading, legend below x-axis.
+    """
+    plot_metric_by_hour_of_week(
+        df=df,
+        metric_col="base_passenger_fare_sum",
+        agg="mean",
+        save=save,
+        out_dir=out_dir,
+        curfew=curfew,
+        ylabel="Avg total base passenger fare ($)",
+        title="Avg total base fare by hour of week",
+        filename="total_base_fare_by_hour_of_week.png",
+        line_color="darkgreen",  # money
+    )
+
+
+def plot_total_driver_pay_by_hour_of_week(df, save=False, out_dir=None, curfew=False):
+    plot_metric_by_hour_of_week(
+        df=df,
+        metric_col="driver_pay_sum",
+        agg="mean",
+        save=save,
+        out_dir=out_dir,
+        curfew=curfew,
+        ylabel="Avg total driver pay ($)",
+        title="Avg total driver pay by hour of week",
+        filename="total_driver_pay_by_hour_of_week.png",
+        line_color="tab:red",
+    )
+
+
+def plot_margin_by_hour_of_week(df, save=False, out_dir=None, curfew=False):
+    d = df.copy()
+    d["margin_sum"] = d["base_passenger_fare_sum"] - d["driver_pay_sum"]
+
+    plot_metric_by_hour_of_week(
+        df=d,
+        metric_col="margin_sum",
+        agg="mean",
+        save=save,
+        out_dir=out_dir,
+        curfew=curfew,
+        ylabel="Avg total margin ($)",
+        title="Avg total margin by hour of week",
+        filename="margin_by_hour_of_week.png",
+        line_color="black",
+    )
 
 
 def plot_day_vs_weekday_avg(

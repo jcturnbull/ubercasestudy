@@ -82,6 +82,14 @@ new hypothesis: next-hour demand depends on current hour's rain, ex: my chicago 
 - heat mechanism has no real effect
 - wind chill has noticeable effect, both on absolute and relative basis
 
+## MLR
+Demand: demand_resid ~ wind_chill_f+heavy_rain_flag_lag0+precip_lag0
+- this means colder conditions increase Uber demand at LGA, about 0.8 trips per degreee fahrenheit drop in wind chill (comfort effect)
+- every additional mm/hr of rainfall reduces hourly demand by 53 trips (operational intensity effect)
+- while precip captures all marginal negative effects on demand, the heavy flag now captures the baseline shift in the regime. this means that once intensity is accounted for to include operational reasons, there's actually increased demand in heavier rain periods than baseline (as expected intuitively), because the marginal suppresion of demand is fully absorbed by precipitation intensity.
+- Increasing rainfall intensity drives the negative demand impact; once we control for that, the heavy-rain regime adds a small positive baseline shift, reflecting behavioral factors rather than operational severity.
+Economics
+
 ## limitations and enhancements
 - get historical data on an hourly basis for average temp on an hour-level for every day of the year to compare the current temp vs baseline. no time now.
 - vacation flags. noticed Sunday 1/19 before MLK Jr holiday, demand was down. probably looked more like a saturday than a typical sunday. can show the chart here.
@@ -92,7 +100,8 @@ new hypothesis: next-hour demand depends on current hour's rain, ex: my chicago 
 - hours with rain and wind chill is 145
 - count of rain in consecutive hours is 263
 - count of rain in consecutive hours with wind chill in the current hour is 113, not big
-
+- did not see how much changing the threshold for heavy rain changes the estimated coefficient or the direction. perhaps heavy rain should be higher than 5mm per hour. moderate rain is 2.5-7.5mm/h, and 7.6mm+ is heavy, i split the difference of moderate rain to binary classify rather than three options.
+- since month is a residualization variable (alongside hour of the week), temperature could become partially redundant
 
 ## presentation ideas
 clickbait title, answered by "no" (probably) ex: can Uber raise airport fares?

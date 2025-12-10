@@ -213,7 +213,7 @@ if __name__ == "__main__":
         "avg_trip_miles",
         "avg_trip_time_min",
         "avg_speed_mph",
-        "median_speed_mph",
+        "median_speed_mph"
     ]
 
     dep_vars = [f"{m}_resid" for m in base_dep_vars]
@@ -228,7 +228,11 @@ if __name__ == "__main__":
         "wind_chill_f",
         "heat_index_f",
         "precip_1h_mm_total",
-        "precip_lag1"
+        "precip_lag1",
+        "driver_pay_pct_of_base_fare",
+        "avg_trip_miles",
+        "avg_trip_time_min",
+        "demand_resid"
     ]
 
     # ----------------------------------------------------------------
@@ -247,12 +251,104 @@ if __name__ == "__main__":
     # ----------------------------------------------------------------
     # 8. Simple multivariate: rain_flag_lag0 + rain_flag_lag1
     # ----------------------------------------------------------------
+    # combo_specs = [
+    #     ( "fare_per_mile_resid", ["wind_chill_f", "heavy_rain_flag_lag0","precip_1h_mm_total"] ),
+    #     ( "driverpay_per_mile_resid", ["wind_chill_f", "heavy_rain_flag_lag0","precip_1h_mm_total"] ),
+    #     ( "margin_per_mile_resid", ["wind_chill_f", "heavy_rain_flag_lag0","precip_1h_mm_total"] ),
+    # ]
+    
     combo_specs = [
-        ( "fare_per_mile_resid", ["rain_flag_lag0", "rain_flag_lag1"] ),
-        ( "driverpay_per_mile_resid", ["rain_flag_lag0", "rain_flag_lag1"] ),
-        ( "margin_per_mile_resid", ["rain_flag_lag0", "rain_flag_lag1"] ),
+        # -----------------------
+        # E0 — Baseline economics, no weather
+        # -----------------------
+        (
+            "avg_base_passenger_fare_resid",
+            ["avg_trip_miles", "avg_trip_time_min", "demand_resid", "driver_pay_pct_of_base_fare"]
+        ),
+        (
+            "fare_per_mile_resid",
+            ["avg_trip_miles", "avg_trip_time_min", "demand_resid", "driver_pay_pct_of_base_fare"]
+        ),
+        (
+            "margin_per_mile_resid",
+            ["avg_trip_miles", "avg_trip_time_min", "demand_resid", "driver_pay_pct_of_base_fare"]
+        ),
+        
+        # -----------------------
+        # E1 — Baseline + weather block (cold-focused)
+        # -----------------------
+        (
+            "avg_base_passenger_fare_resid",
+            ["avg_trip_miles", "avg_trip_time_min", "demand_resid", "driver_pay_pct_of_base_fare",
+                "rain_flag_lag0", "heavy_rain_flag_lag0", "precip_1h_mm_total", "wind_chill_f"]
+        ),
+        (
+            "fare_per_mile_resid",
+            ["avg_trip_miles", "avg_trip_time_min", "demand_resid", "driver_pay_pct_of_base_fare",
+            "rain_flag_lag0", "heavy_rain_flag_lag0", "precip_1h_mm_total", "wind_chill_f"]
+        ),
+        (
+            "margin_per_mile_resid",
+            ["avg_trip_miles", "avg_trip_time_min", "demand_resid", "driver_pay_pct_of_base_fare",
+            "rain_flag_lag0", "heavy_rain_flag_lag0", "precip_1h_mm_total", "wind_chill_f"]
+        ),
+        
+        # -----------------------
+        # P1 — Price mechanics: weather effect distinct from demand?
+        # -----------------------
+        (
+            "fare_per_mile_resid",
+            ["avg_trip_miles", "avg_trip_time_min",
+             "demand_resid", "driver_pay_pct_of_base_fare",
+             "rain_flag_lag0", "heavy_rain_flag_lag0",
+             "precip_1h_mm_total", "wind_chill_f"]
+        ),
+
+        # -----------------------
+        # D1 — Driver economics: who captures the weather premium?
+        # -----------------------
+        (
+            "driverpay_per_mile_resid",
+            ["avg_trip_miles", "avg_trip_time_min",
+            "demand_resid", "driver_pay_pct_of_base_fare",
+            "rain_flag_lag0", "heavy_rain_flag_lag0",
+            "precip_1h_mm_total", "wind_chill_f"]
+        ),
+        
+        # -----------------------
+        # M1 — Margin decomposition under weather shocks
+        # -----------------------
+        (
+            "margin_per_mile_resid",
+            ["avg_trip_miles", "avg_trip_time_min",
+            "demand_resid", "driver_pay_pct_of_base_fare",
+            "rain_flag_lag0", "heavy_rain_flag_lag0",
+            "precip_1h_mm_total", "wind_chill_f"]
+        ),
+        
+        # -----------------------
+        # D2A — Mediation test: weather → driver pay (NO driver_pct_of_base_fare)
+        # -----------------------
+        (
+            "driverpay_per_mile_resid",
+            ["avg_trip_miles", "avg_trip_time_min", "demand_resid",
+            "rain_flag_lag0", "heavy_rain_flag_lag0",
+            "precip_1h_mm_total", "wind_chill_f"]
+        ),
+
+        # -----------------------
+        # D2B — Mediation test: weather → driver pay (WITH driver_pct_of_base_fare)
+        # -----------------------
+            (
+                "driverpay_per_mile_resid",
+                ["avg_trip_miles", "avg_trip_time_min", "demand_resid",
+                "rain_flag_lag0", "heavy_rain_flag_lag0",
+                "precip_1h_mm_total", "wind_chill_f",
+                "driver_pay_pct_of_base_fare"]
+            ),
     ]
 
+    
     for y, xs in combo_specs:
         label = f"{y} ~ rain_flag_lag0 + rain_flag_lag1"
         model, used = run_ols(df_metrics_resid, y_col=y, x_cols=xs, label=label)

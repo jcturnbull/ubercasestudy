@@ -298,7 +298,7 @@ if __name__ == "__main__":
     #   ["heavy_rain_flag_lag0", "precip_lag0"]
     #   ["rain_flag_lag0", "precip_lag1"]
     #   ["heavy_rain_flag_lag1", "precip_lag0", "precip_lag1"]
-    '''interesting_combos = [
+    interesting_combos = [
         # 1. wind chill diff + rain_flag_lag0 + rain_flag_lag1
         ["wind_chill_diff", "rain_flag_lag0", "rain_flag_lag1"],
 
@@ -325,7 +325,23 @@ if __name__ == "__main__":
 
         # 9. wind chill diff + rain_flag_lag1 + precip_lag0
         ["wind_chill_diff", "rain_flag_lag1", "precip_lag0"],
-    ]'''
+        
+        # 10. wind chill + precip_lag0 + rain_flag_lag0
+        ["wind_chill_f", "precip_lag0", "rain_flag_lag0"],
+        
+        # 11. wind chill + heavy_rain_flag_lag0 + precip_lag0
+        ["wind_chill_f", "heavy_rain_flag_lag0", "precip_lag0"],
+        
+        # 12. wind chill diff + heavy_rain_flag_lag1 + precip_lag0
+        ["wind_chill_diff", "heavy_rain_flag_lag1", "precip_lag0"],
+        
+        # 13. wind chill diff + heavy_rain_flag_lag0 + heavy_rain_flag_lag1
+        ["wind_chill_diff", "heavy_rain_flag_lag0", "heavy_rain_flag_lag1"],
+        
+        # 14. wind chill diff + precip_lag0
+        ["wind_chill_diff", "precip_lag0"],
+    ]
+    '''
     interesting_combos = [
         # 1. wind chill + precip_lag0 + rain_flag_lag0
         ["wind_chill_f", "precip_lag0", "rain_flag_lag0"],
@@ -335,7 +351,7 @@ if __name__ == "__main__":
 
         # 3. wind chill + precip_lag1 + rain_flag_lag0
         ["wind_chill_f", "precip_lag1", "rain_flag_lag0"],
-    ]
+    ]'''
 
     for combo in interesting_combos:
         label = "demand_resid ~ " + "+".join(combo)
