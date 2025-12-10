@@ -491,6 +491,7 @@ def plot_corr_heatmap(
 
     plt.close(fig)
 
+
 def plot_requests_by_hour_of_day(
     df: pd.DataFrame,
     count_col: str = "request_count",
@@ -760,130 +761,242 @@ def plot_requests_by_hour_of_week(
     curfew: bool = False,
 ) -> None:
     """
-    Total requests by hour of week (0–167), with:
-      - continuous line over 0–167
-      - points color-coded by day of week
-      - weekend shaded (Fri 19:00 -> Mon 06:00)
-      - thin black dashed reference line: avg total requests by hour-of-day,
-        repeated for each day-of-week (0–23 pattern repeated 7 times).
-
-    Assumes any curfew filtering (dropping hours 2–6) was already
-    applied upstream; `curfew` is only used for the title suffix.
+    Backward-compatible wrapper that uses the generic multi-series demand plot
+    but only shows realized demand + hourly-of-day baseline (no model line).
     """
-    if time_col not in df.columns or count_col not in df.columns:
-        print("Missing datetime or request_count; skipping hour-of-week plot.")
-        return
+    if time_col != DEFAULT_TIME_COL:
+        df = df.copy()
+        df[DEFAULT_TIME_COL] = df[time_col]
 
+    plot_demand_hour_of_week_multi(
+        df=df,
+        realized_col=count_col,
+        est_col=None,           # no model line in this wrapper
+        est_label="Model estimate",
+        time_col=DEFAULT_TIME_COL,
+        save=save,
+        out_dir=out_dir,
+        curfew=curfew,
+    )
+
+
+def plot_metric_day_vs_weekday_avg(
+    df: pd.DataFrame,
+    target_date,
+    metric_col: str,
+    compare_dow1,
+    compare_dow2=None,
+    est_col: str | None = None,
+    est_label: str = "Model estimate",
+    time_col: str = DEFAULT_TIME_COL,
+    hour_col: str = "request_hour",
+    save: bool = False,
+    out_dir: Path | None = None,
+) -> None:
+    """
+    Generic version of the day-vs-weekday-average plot.
+
+    Plots the hourly (0–23) values of `metric_col` for a specific calendar date
+    against the average profile for one or two comparison weekdays.
+    Optionally overlays a model-estimated series (est_col) for the target day.
+
+    Examples:
+        - Demand:
+            plot_metric_day_vs_weekday_avg(
+                df, "2025-01-19", "request_count",
+                compare_dow1="Sunday",
+                compare_dow2="Saturday",
+                est_col="demand_hat"
+            )
+
+        - Margin:
+            plot_metric_day_vs_weekday_avg(
+                df, "2025-01-19", "margin_sum",
+                compare_dow1="Sunday"
+            )
+    """
+    # ------------------------------------------------------------------
+    # Basic column checks
+    # ------------------------------------------------------------------
+    if time_col not in df.columns or hour_col not in df.columns:
+        print("Missing time/hour columns; skipping day-vs-weekday plot.")
+        return
+    if metric_col not in df.columns:
+        print(f"Missing metric column '{metric_col}'; skipping.")
+        return
+    if est_col is not None and est_col not in df.columns:
+        print(f"Missing est_col '{est_col}'; disabling model overlay.")
+        est_col = None
+
+    # ------------------------------------------------------------------
+    # Output directory
+    # ------------------------------------------------------------------
     if save:
         if out_dir is None:
             out_dir = PLOTS_DIR
         out_dir = _ensure_out_dir(out_dir)
 
+    # ------------------------------------------------------------------
+    # Normalize target date
+    # ------------------------------------------------------------------
+    target_ts = pd.to_datetime(target_date)
+    target_date_only = target_ts.date()
+
     d = df.copy()
-    d["dow"] = d[time_col].dt.dayofweek        # 0 = Monday ... 6 = Sunday
-    d["hour"] = d[time_col].dt.hour            # 0–23
-    d["hour_of_week"] = d["dow"] * 24 + d["hour"]  # 0–167
+    d["dow"] = d[time_col].dt.dayofweek          # 0 = Monday ... 6 = Sunday
+    d["date_only"] = d[time_col].dt.date         # Python date
 
-    # Aggregate total requests by hour_of_week
-    grouped = (
-        d.groupby("hour_of_week", as_index=False)[count_col]
+    # Mask for the target calendar date
+    day_mask = d["date_only"] == target_date_only
+    if not day_mask.any():
+        print(f"No data found for date {target_date_only}; skipping.")
+        return
+
+    target_dow = target_ts.dayofweek
+    target_dow_name = calendar.day_name[target_dow]
+
+    # ------------------------------------------------------------------
+    # Build the realized hourly profile (0–23)
+    # ------------------------------------------------------------------
+    day_profile = (
+        d.loc[day_mask]
+        .groupby(hour_col)[metric_col]
         .sum()
-        .rename(columns={count_col: "total_requests"})
-        .sort_values("hour_of_week")
+        .reindex(range(24), fill_value=0.0)
     )
 
-    # Ensure all 0..167 present
-    all_hours = pd.DataFrame({"hour_of_week": np.arange(168)})
-    grouped = all_hours.merge(grouped, on="hour_of_week", how="left")
-    grouped["total_requests"] = grouped["total_requests"].fillna(0)
-
-    # Day-of-week for each hour_of_week
-    grouped["dow"] = grouped["hour_of_week"] // 24
-
-    # ---- Build reference line: avg total requests by hour-of-day ----
-    # Total by hour-of-day across the dataset
-    hourly_totals = (
-        d.groupby("hour")[count_col]
-        .sum()
-        .reindex(range(24), fill_value=0)
-    )
-    # As requested: divide by 7
-    hourly_avg = hourly_totals / 7.0  # 24-length Series
-
-    # Repeat this 0–23 pattern 7 times → 0..167
-    hourly_avg_pattern = np.tile(hourly_avg.values, 7)
-
-    fig, ax = plt.subplots(figsize=(14, 5))
-
-    # Continuous line of actual total requests
-    ax.plot(
-        grouped["hour_of_week"],
-        grouped["total_requests"],
-        linewidth=1.0,
-        color="dimgray",
-        zorder=1,
-    )
-
-    # Color-coded points by DOW
-    for dow in range(7):
-        mask = grouped["dow"] == dow
-        if not mask.any():
-            continue
-        ax.scatter(
-            grouped.loc[mask, "hour_of_week"],
-            grouped.loc[mask, "total_requests"],
-            s=15,
-            alpha=0.8,
-            label=calendar.day_name[dow],
-            zorder=2,
+    # Optional model-estimated hourly profile for that day
+    est_profile = None
+    if est_col is not None:
+        est_profile = (
+            d.loc[day_mask]
+            .groupby(hour_col)[est_col]
+            .sum()
+            .reindex(range(24), fill_value=0.0)
         )
 
-    # Reference line: avg total requests by hour-of-day, repeated over the week
+    # ------------------------------------------------------------------
+    # Resolve weekday comparison(s)
+    # ------------------------------------------------------------------
+    def _normalize_dow(dow_spec) -> int:
+        """Normalize weekday name/int to canonical 0–6."""
+        if isinstance(dow_spec, int):
+            if 0 <= dow_spec <= 6:
+                return dow_spec
+            raise ValueError(f"Invalid weekday int: {dow_spec}")
+
+        s = str(dow_spec).strip().lower()
+        for i in range(7):
+            if s == calendar.day_name[i].lower():
+                return i
+        for i in range(7):
+            if s == calendar.day_name[i][:3].lower():
+                return i
+
+        raise ValueError(f"Unrecognized DOW: {dow_spec}")
+
+    dow1 = _normalize_dow(compare_dow1)
+    dow1_name = calendar.day_name[dow1]
+
+    dow2 = None
+    dow2_name = None
+    if compare_dow2 is not None:
+        dow2 = _normalize_dow(compare_dow2)
+        dow2_name = calendar.day_name[dow2]
+
+    # ------------------------------------------------------------------
+    # Average weekday profile(s)
+    # ------------------------------------------------------------------
+    def _avg_profile_for_dow(dow: int) -> pd.Series:
+        mask = (d["dow"] == dow) & (~day_mask)
+        if not mask.any():
+            return pd.Series(0.0, index=range(24))
+        return (
+            d.loc[mask]
+            .groupby(hour_col)[metric_col]
+            .mean()
+            .reindex(range(24), fill_value=0.0)
+        )
+
+    avg_profile_1 = _avg_profile_for_dow(dow1)
+    avg_profile_2 = _avg_profile_for_dow(dow2) if dow2 is not None else None
+
+    # ------------------------------------------------------------------
+    # Plotting
+    # ------------------------------------------------------------------
+    hours = np.arange(24)
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    # Realized metric: solid gray + DOW-colored markers
+    real_color = DAY_COLOR_MAP.get(target_dow, "tab:gray")
+
     ax.plot(
-        grouped["hour_of_week"],
-        hourly_avg_pattern,
+        hours,
+        day_profile.values,
+        color="0.4",
+        linewidth=1.6,
+        label=f"{target_date_only} ({target_dow_name})",
+    )
+
+    ax.scatter(
+        hours,
+        day_profile.values,
+        color=real_color,
+        s=25,
+        alpha=0.9,
+    )
+
+    # Model estimate overlay (optional)
+    if est_profile is not None:
+        ax.plot(
+            hours,
+            est_profile.values,
+            linestyle="-.",
+            linewidth=1.3,
+            color="darkred",
+            label=est_label,
+        )
+
+    # Baseline weekday 1: black dashed
+    ax.plot(
+        hours,
+        avg_profile_1.values,
         linestyle="--",
         linewidth=1.0,
         color="black",
-        label="Hourly avg (0–23 pattern)",
-        zorder=0,
+        label=f"Avg {dow1_name}",
     )
 
-    title_suffix = " (hours 2–6 removed)" if curfew else ""
-    ax.set_title(f"Total requests by hour of week{title_suffix}")
-    ax.set_xlabel("Hour of week (0–167)")
-    ax.set_ylabel("Total requests")
+    # Baseline weekday 2 (optional): blue dashed
+    if avg_profile_2 is not None:
+        ax.plot(
+            hours,
+            avg_profile_2.values,
+            linestyle="--",
+            linewidth=1.0,
+            color="tab:blue",
+            label=f"Avg {dow2_name}",
+        )
+
+    # Titles / labels
+    ax.set_title(f"{metric_col} on {target_date_only} vs weekday averages")
+    ax.set_xlabel("Hour of day (0–23)")
+    ax.set_ylabel(metric_col)
+    ax.set_xticks(range(24))
     ax.grid(True, alpha=0.3)
 
-    # X-ticks at day boundaries
-    xticks = [24 * d for d in range(8)]
-    xtick_labels = [calendar.day_name[d] for d in range(7)] + ["Mon (next week)"]
-    ax.set_xticks(xticks)
-    ax.set_xticklabels(xtick_labels, rotation=45, ha="right")
-
-    # Weekend shading: Fri 19:00 -> Mon 06:00
-    weekend_start = 4 * 24 + 19   # Friday 19:00 = hour 115
-    weekend_end1 = 7 * 24         # 168
-    weekend_end2 = 6              # Monday 06:00 = hour 6
-    ax.axvspan(weekend_start, weekend_end1 - 1, alpha=0.12)
-    ax.axvspan(0, weekend_end2, alpha=0.12)
-
-    # Legend above chart, 7 day names + 1 ref line → wraps as needed
-    ax.legend(
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.22),
-        ncol=7,
-        fontsize=8,
-        frameon=False
-    )
-
+    # Legend
+    ax.legend(loc="upper left", fontsize=8, frameon=False)
     fig.tight_layout()
 
+    # Save or show
     if save:
-        fig.savefig(out_dir / "requests_by_hour_of_week.png",
-                    dpi=150, bbox_inches="tight")
+        date_str = target_ts.strftime("%Y%m%d")
+        fname = f"day_vs_weekday_avg_{metric_col}_{date_str}.png"
+        fig.savefig(out_dir / fname, dpi=150, bbox_inches="tight")
     else:
         plt.show()
+
     plt.close(fig)
 
 
@@ -1374,6 +1487,190 @@ def plot_metric_by_hour_of_week(
     plt.close(fig)
 
 
+def plot_demand_hour_of_week_multi(
+    df: pd.DataFrame,
+    realized_col: str = "request_count",
+    est_col: str | None = None,
+    est_label: str = "Model estimate",
+    time_col: str = DEFAULT_TIME_COL,
+    save: bool = False,
+    out_dir: Path | None = None,
+    curfew: bool = False,
+) -> None:
+    """
+    Hour-of-week (0–167) demand plot with:
+      - Realized demand (aggregated by hour_of_week)
+      - Optional model-estimated demand (same aggregation)
+      - Black dashed hourly-of-day baseline pattern (avg across hours 0–23)
+
+    Realized series uses the usual DOW-colored markers.
+    Optional model series is a dark red dash-dot line.
+    """
+    # Basic checks
+    if time_col not in df.columns:
+        print(f"Missing {time_col}; skipping demand hour-of-week plot.")
+        return
+    if realized_col not in df.columns:
+        print(f"Missing {realized_col}; skipping demand hour-of-week plot.")
+        return
+    if est_col is not None and est_col not in df.columns:
+        print(f"Missing {est_col}; skipping model-estimate overlay.")
+        est_col = None  # disable
+
+    # Output directory
+    if save:
+        if out_dir is None:
+            out_dir = PLOTS_DIR
+        out_dir = _ensure_out_dir(out_dir)
+
+    d = df.copy()
+    d["dow"] = d[time_col].dt.dayofweek          # 0=Mon..6=Sun
+    d["hour"] = d[time_col].dt.hour              # 0–23
+
+    # Optional curfew filter (LaGuardia 2–6)
+    if curfew and "request_hour" in d.columns:
+        d = d[~d["request_hour"].isin(CURFEW_HOURS)].copy()
+
+    d["hour_of_week"] = d["dow"] * 24 + d["hour"]  # 0–167
+
+    # ------------------------------------------------------------------
+    # 1) Realized demand by hour_of_week
+    # ------------------------------------------------------------------
+    g_real = (
+        d.groupby("hour_of_week", as_index=False)[realized_col]
+        .sum()
+        .rename(columns={realized_col: "realized"})
+        .sort_values("hour_of_week")
+    )
+
+    # Ensure full 0..167 grid
+    all_hours = pd.DataFrame({"hour_of_week": np.arange(168)})
+    g_real = all_hours.merge(g_real, on="hour_of_week", how="left")
+    g_real["realized"] = g_real["realized"].fillna(0.0)
+
+    # Day-of-week per hour_of_week
+    g_real["dow"] = g_real["hour_of_week"] // 24
+
+    # ------------------------------------------------------------------
+    # 2) Optional model estimate by hour_of_week
+    # ------------------------------------------------------------------
+    if est_col is not None:
+        g_est = (
+            d.groupby("hour_of_week", as_index=False)[est_col]
+            .sum()
+            .rename(columns={est_col: "est"})
+            .sort_values("hour_of_week")
+        )
+        g_est = all_hours.merge(g_est, on="hour_of_week", how="left")
+        g_real["est"] = g_est["est"].astype(float)
+    else:
+        g_real["est"] = np.nan
+
+    # ------------------------------------------------------------------
+    # 3) Hour-of-day baseline pattern (0–23), repeated over the week
+    # ------------------------------------------------------------------
+    hourly_totals = (
+        d.groupby("hour")[realized_col]
+        .sum()
+        .reindex(range(24), fill_value=0.0)
+    )
+    # As per your earlier spec: divide the bar chart by 7
+    hourly_avg = hourly_totals / 7.0
+    hourly_avg_pattern = np.tile(hourly_avg.values, 7)
+
+    # ------------------------------------------------------------------
+    # Plot
+    # ------------------------------------------------------------------
+    fig, ax = plt.subplots(figsize=(14, 5))
+
+    # Realized: continuous line + DOW-colored markers
+    ax.plot(
+        g_real["hour_of_week"],
+        g_real["realized"],
+        linewidth=1.0,
+        color="dimgray",
+        label="Realized demand",
+        zorder=1,
+    )
+
+    for dow in range(7):
+        mask = g_real["dow"] == dow
+        if not mask.any():
+            continue
+        ax.scatter(
+            g_real.loc[mask, "hour_of_week"],
+            g_real.loc[mask, "realized"],
+            s=15,
+            alpha=0.8,
+            color=DAY_COLOR_MAP.get(dow, "tab:gray"),
+            label=calendar.day_name[dow],
+            zorder=2,
+        )
+
+    # Baseline: black dashed hourly-of-day pattern
+    ax.plot(
+        g_real["hour_of_week"],
+        hourly_avg_pattern,
+        linestyle="--",
+        linewidth=1.0,
+        color="black",
+        label="Hourly avg (0–23 pattern)",
+        zorder=0,
+    )
+
+    # Optional model estimate: dark red dash-dot
+    if est_col is not None and g_real["est"].notna().any():
+        ax.plot(
+            g_real["hour_of_week"],
+            g_real["est"],
+            linestyle="-.",
+            linewidth=1.2,
+            color="darkred",
+            label=est_label,
+            zorder=1.5,
+        )
+
+    title_suffix = " (hours 2–6 removed)" if curfew else ""
+    ax.set_title(f"Demand by hour of week{title_suffix}")
+    ax.set_xlabel("Hour of week (0–167)")
+    ax.set_ylabel(realized_col)
+    ax.grid(True, alpha=0.3)
+
+    # X-ticks at day boundaries
+    xticks = [24 * d for d in range(8)]
+    xtick_labels = [calendar.day_name[d] for d in range(7)] + ["Mon (next week)"]
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xtick_labels, rotation=45, ha="right")
+
+    # Weekend shading: Fri 19:00 -> Mon 06:00
+    weekend_start = 4 * 24 + 19   # 115
+    weekend_end1 = 7 * 24         # 168
+    weekend_end2 = 6              # 6
+    ax.axvspan(weekend_start, weekend_end1 - 1, alpha=0.12)
+    ax.axvspan(0, weekend_end2, alpha=0.12)
+
+    # Legend below x axis (7 DOW colors + baseline + optional model)
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.26),  # tuned a bit lower to avoid overlap
+        ncol=7,
+        fontsize=8,
+        frameon=False,
+    )
+
+    # Give extra bottom margin so legend isn't clipped
+    plt.subplots_adjust(bottom=0.22)
+    fig.tight_layout()
+
+    if save:
+        fname = f"demand_by_hour_of_week_{realized_col}.png"
+        fig.savefig(out_dir / fname, dpi=150, bbox_inches="tight")
+    else:
+        plt.show()
+
+    plt.close(fig)
+
+
 def plot_total_base_fare_by_hour_of_week(
     df: pd.DataFrame,
     save: bool = False,
@@ -1445,144 +1742,20 @@ def plot_day_vs_weekday_avg(
     save: bool = False,
     out_dir: Path | None = None,
 ) -> None:
-    """
-    Compare a specific calendar date's hourly demand profile (0–23)
-    against one or two weekday-average profiles.
 
-    Example:
-        plot_day_vs_weekday_avg(
-            df,
-            target_date="2025-01-19",
-            compare_dow1="Sunday",
-            compare_dow2="Saturday",
-        )
-    """
-    # Basic column checks
-    if time_col not in df.columns or hour_col not in df.columns:
-        print("Missing time/hour columns; skipping day-vs-weekday plot.")
-        return
-    if count_col not in df.columns:
-        print(f"Missing {count_col}; skipping day-vs-weekday plot.")
-        return
-
-    # Output dir
-    if save:
-        if out_dir is None:
-            out_dir = PLOTS_DIR
-        out_dir = _ensure_out_dir(out_dir)
-
-    # Normalize target date and DOW
-    target_ts = pd.to_datetime(target_date)
-    target_date_only = target_ts.date()
-
-    d = df.copy()
-    d["dow"] = d[time_col].dt.dayofweek          # 0 = Monday ... 6 = Sunday
-    d["date_only"] = d[time_col].dt.date         # pure Python date for each row
-
-    # Mask for the target calendar date
-    day_mask = d["date_only"] == target_date_only
-    if not day_mask.any():
-        print(f"No data found for date {target_date_only}; skipping.")
-        return
-
-    target_dow = target_ts.dayofweek
-    target_dow_name = calendar.day_name[target_dow]
-
-    # Hourly profile for the specific day (0–23)
-    day_profile = (
-        d.loc[day_mask]
-        .groupby(hour_col)[count_col]
-        .sum()
-        .reindex(range(24), fill_value=0)
+    plot_metric_day_vs_weekday_avg(
+        df=df,
+        target_date=target_date,
+        metric_col=count_col,
+        compare_dow1=compare_dow1,
+        compare_dow2=compare_dow2,
+        est_col=None,  # no model line here
+        time_col=time_col,
+        hour_col=hour_col,
+        save=save,
+        out_dir=out_dir,
     )
 
-    # Resolve comparison weekdays
-    dow1 = _normalize_dow(compare_dow1)
-    dow1_name = calendar.day_name[dow1]
-
-    dow2 = None
-    dow2_name = None
-    if compare_dow2 is not None:
-        dow2 = _normalize_dow(compare_dow2)
-        dow2_name = calendar.day_name[dow2]
-
-    # Helper: average hourly profile for a given DOW (0–23)
-    def _avg_profile_for_dow(dow: int) -> pd.Series:
-        mask = d["dow"] == dow
-        # Exclude the target date from the baseline
-        mask &= ~day_mask
-        if not mask.any():
-            return pd.Series(0.0, index=range(24))
-        return (
-            d.loc[mask]
-            .groupby(hour_col)[count_col]
-            .mean()
-            .reindex(range(24), fill_value=0.0)
-        )
-
-    avg_profile_1 = _avg_profile_for_dow(dow1)
-    avg_profile_2 = _avg_profile_for_dow(dow2) if dow2 is not None else None
-
-    hours = np.arange(24)
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-
-    # Real day: solid gray line with markers in true DOW color
-    real_color = DAY_COLOR_MAP.get(target_dow, "tab:gray")
-    ax.plot(
-        hours,
-        day_profile.values,
-        color="0.4",
-        linewidth=1.6,
-        label=f"{target_date_only} ({target_dow_name})",
-    )
-    ax.scatter(
-        hours,
-        day_profile.values,
-        color=real_color,
-        s=25,
-        alpha=0.9,
-    )
-
-    # Baseline 1: black dashed
-    ax.plot(
-        hours,
-        avg_profile_1.values,
-        linestyle="--",
-        linewidth=1.0,
-        color="black",
-        label=f"Avg {dow1_name}",
-    )
-
-    # Baseline 2: blue dashed (optional)
-    if avg_profile_2 is not None:
-        ax.plot(
-            hours,
-            avg_profile_2.values,
-            linestyle="--",
-            linewidth=1.0,
-            color="tab:blue",
-            label=f"Avg {dow2_name}",
-        )
-
-    title = f"Total requests on {target_date_only} vs weekday averages"
-    ax.set_title(title)
-    ax.set_xlabel("Hour of day (0–23)")
-    ax.set_ylabel("Total requests")
-    ax.set_xticks(range(24))
-    ax.grid(True, alpha=0.3)
-
-    ax.legend(loc="upper left", fontsize=8, frameon=False)
-    fig.tight_layout()
-
-    if save:
-        date_str = target_ts.strftime("%Y%m%d")
-        fname = f"day_vs_weekday_avg_{date_str}.png"
-        fig.savefig(out_dir / fname, dpi=150, bbox_inches="tight")
-    else:
-        plt.show()
-
-    plt.close(fig)
 
 
 

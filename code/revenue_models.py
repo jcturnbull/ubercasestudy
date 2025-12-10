@@ -350,7 +350,8 @@ if __name__ == "__main__":
 
     
     for y, xs in combo_specs:
-        label = f"{y} ~ rain_flag_lag0 + rain_flag_lag1"
+        rhs = " + ".join(xs)
+        label = f"{y} ~ {rhs}"          # dynamic, matches actual regressors
         model, used = run_ols(df_metrics_resid, y_col=y, x_cols=xs, label=label)
         if model is None:
             continue

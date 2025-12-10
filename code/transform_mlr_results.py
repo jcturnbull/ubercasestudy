@@ -8,39 +8,41 @@ Created on Tue Dec  9 20:55:12 2025
 import numpy as np
 import pandas as pd
 
-df = pd.read_excel(r"C:\Users\epicx\Projects\ubercasestudy\reports\revenue_weather_models_mlr_results.xlsx")
+# === 1. Load raw MLR output ===
+df = pd.read_excel(
+    r"C:\Users\epicx\Projects\ubercasestudy\reports\revenue_weather_models_mlr_results.xlsx"
+)
 
-# (optional) create short model names like "E0-fare_per_mile_resid"
-# You can just hard-code a mapping once you know which rows are which.
+# (optional) mapping from long model names → clean-short names
 model_map = {
-    # full model_label string : "E0-fare_per_mile_resid" etc.
-    # "avg_base_passenger_fare_resid ~ rain_flag_lag0 + rain_flag_lag1": "E0-avg_base",
+    # "avg_base_passenger_fare_resid ~ ...": "E0-base",
 }
 df["model_short"] = df["model_label"].map(model_map).fillna(df["model_label"])
 
+# === 2. Build long-form table ===
 records = []
+
 for _, row in df.iterrows():
     m = row["model_short"]
 
-    # global stats
-    records.append({"model": m, "metric": "R2",      "coef": row["r2"],     "sig": "", "p": np.nan})
-    records.append({"model": m, "metric": "adj_R2",  "coef": row["r2_adj"], "sig": "", "p": np.nan})
-    records.append({"model": m, "metric": "nObs",    "coef": row["n_obs"],  "sig": "", "p": np.nan})
+    records.append({"model": m, "metric": "R2",     "coef": row["r2"],     "sig": "", "p": np.nan})
+    records.append({"model": m, "metric": "adj_R2", "coef": row["r2_adj"], "sig": "", "p": np.nan})
+    records.append({"model": m, "metric": "nObs",   "coef": row["n_obs"],  "sig": "", "p": np.nan})
 
-    # per-variable stats
     for i in range(1, 9):
         var = row.get(f"var_{i}")
-        if isinstance(var, str) and var:   # skip NaNs
+        if isinstance(var, str) and var:
             records.append({
-                "model":  m,
+                "model": m,
                 "metric": var,
-                "coef":   row.get(f"coef_{i}"),
-                "sig":    row.get(f"sig_{i}"),
-                "p":      row.get(f"p_{i}"),
+                "coef": row.get(f"coef_{i}"),
+                "sig":  row.get(f"sig_{i}"),
+                "p":    row.get(f"p_{i}"),
             })
 
 long_df = pd.DataFrame(records)
 
+# === 3. Format p-values ===
 def format_p(x):
     if pd.isna(x):
         return ""
@@ -50,16 +52,21 @@ def format_p(x):
 
 long_df["p_fmt"] = long_df["p"].apply(format_p)
 
-coef_wide = long_df.pivot_table(index="metric", columns="model", values="coef", aggfunc="first")
-sig_wide  = long_df.pivot_table(index="metric", columns="model", values="sig",  aggfunc="first")
-p_wide    = long_df.pivot_table(index="metric", columns="model", values="p_fmt",aggfunc="first")
+# === 4. Pivot to wide ===
+coef_wide = long_df.pivot_table(index="metric", columns="model", values="coef",    aggfunc="first")
+sig_wide  = long_df.pivot_table(index="metric", columns="model", values="sig",     aggfunc="first")
+p_wide    = long_df.pivot_table(index="metric", columns="model", values="p_fmt",   aggfunc="first")
 
-# combine into a single table with a 2-level column index: (model, stat)
-wide = pd.concat(
-    {"coef": coef_wide, "sig": sig_wide, "p": p_wide},
-    axis=1
-).swaplevel(axis=1).sort_index(axis=1)   # columns: model -> (coef, sig, p)
+coef_wide = coef_wide.round(5)
 
+coef_wide.columns = pd.MultiIndex.from_product([coef_wide.columns, ["coef"]])
+sig_wide.columns  = pd.MultiIndex.from_product([sig_wide.columns,  ["sig"]])
+p_wide.columns    = pd.MultiIndex.from_product([p_wide.columns,    ["p"]])
+
+wide = pd.concat([coef_wide, sig_wide, p_wide], axis=1)
+wide = wide.sort_index(axis=1, level=0)
+
+# === 5. Order rows ===
 row_order = [
     "R2", "adj_R2", "nObs",
     "avg_trip_miles",
@@ -73,3 +80,25 @@ row_order = [
 ]
 
 wide = wide.reindex(row_order)
+
+# === 6. FIX: convert "model.stat" → MultiIndex (model, stat) ===
+def split_col(col):
+    # col is a tuple: (model_name, "coef") because of MultiIndex
+    # so just return as-is
+    return col
+
+# Already correct structure: (model, stat)
+# but ensure index name is clean
+wide.index.name = None
+
+# === 7. Export ===
+output_path = r"C:\Users\epicx\Projects\ubercasestudy\reports\mlr_model_comparison.xlsx"
+
+wide.to_excel(
+    output_path,
+    sheet_name="comparison",
+    merge_cells=False,
+    freeze_panes=(2, 1)   # freeze top 2 header rows + first column
+)
+
+print("Export complete:", output_path)
