@@ -1,0 +1,63 @@
+Model: E1_fare
+================================================================================
+
+                                  OLS Regression Results                                 
+=========================================================================================
+Dep. Variable:     avg_base_passenger_fare_resid   R-squared:                       0.554
+Model:                                       OLS   Adj. R-squared:                  0.552
+Method:                            Least Squares   F-statistic:                     340.4
+Date:                           Wed, 10 Dec 2025   Prob (F-statistic):               0.00
+Time:                                   22:42:04   Log-Likelihood:                -6653.4
+No. Observations:                           2205   AIC:                         1.332e+04
+Df Residuals:                               2196   BIC:                         1.338e+04
+Df Model:                                      8                                         
+Covariance Type:                       nonrobust                                         
+===============================================================================================
+                                  coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------------------
+const                         -13.5292      1.339    -10.103      0.000     -16.155     -10.903
+avg_trip_miles                  2.5288      0.053     47.845      0.000       2.425       2.632
+avg_trip_time_min              -0.1746      0.017    -10.506      0.000      -0.207      -0.142
+demand_resid_lag1               0.0061      0.001      7.326      0.000       0.004       0.008
+driver_pay_pct_of_base_fare   -13.5914      1.629     -8.343      0.000     -16.786     -10.397
+rain_flag_lag0                  1.8900      0.525      3.600      0.000       0.860       2.920
+heavy_rain_flag_lag0           -0.6965      3.368     -0.207      0.836      -7.302       5.909
+precip_1h_mm_total              0.2664      0.345      0.772      0.440      -0.410       0.943
+wind_chill_f                   -0.0043      0.010     -0.443      0.658      -0.023       0.015
+==============================================================================
+Omnibus:                      247.467   Durbin-Watson:                   0.750
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):              468.441
+Skew:                           0.725   Prob(JB):                    1.90e-102
+Kurtosis:                       4.731   Cond. No.                     4.11e+03
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.11e+03. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+Diagnostic summary:
+  n: 2205
+  k: 9
+  adj_r2: 0.551927295473579
+  rmse: 4.945473744127694
+  jb_stat: 468.4408443830644
+  jb_p: 1.9026683465583656e-102
+  bp_stat: 155.59247186612683
+  bp_p: 1.3338308368930142e-29
+  bg_stat: 949.8043970555401
+  bg_p: 2.6922379808298614e-204
+  dw: 0.7501733575986237
+  max_cooks_d: 0.17470489116115345
+  num_high_cooks: 116
+  cooks_threshold: 0.0018140589569160999
+
+VIF:
+  avg_trip_miles: 1.429
+  avg_trip_time_min: 1.528
+  demand_resid_lag1: 1.029
+  driver_pay_pct_of_base_fare: 1.104
+  rain_flag_lag0: 1.827
+  heavy_rain_flag_lag0: 3.223
+  precip_1h_mm_total: 4.473
+  wind_chill_f: 1.035

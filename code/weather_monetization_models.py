@@ -42,6 +42,8 @@ from revenue_models import (
     run_ols,
 )
 
+from ols_diagnostics import compute_diagnostics, save_diagnostic_report
+
 # -----------------------------------------------------------------------------
 # Config
 # -----------------------------------------------------------------------------
@@ -328,6 +330,36 @@ def add_level_predictions(df: pd.DataFrame, results: dict) -> pd.DataFrame:
 
     return out
 
+def run_all_diagnostics(results: dict, out_dir: str):
+    diags = {}
+    for name, bundle in results.items():
+        model = bundle.get("model")
+        if model is None:
+            continue
+        print(f"\n[Diagnostics] Running for {name} ...")
+        diag = compute_diagnostics(model)
+        diags[name] = diag
+        save_diagnostic_report(model, diag, name, out_dir)
+    return diags
+
+def compare_E0_E1(diags: dict, results: dict, key0: str, key1: str):
+    m0 = results[key0]["model"]
+    m1 = results[key1]["model"]
+    d0 = diags[key0]
+    d1 = diags[key1]
+
+    print("\n" + "=" * 80)
+    print(f"Comparison: {key0} vs {key1}")
+    print("-" * 80)
+    print(f"{'':20s} {key0:>15s} {key1:>15s}")
+    print(f"{'adj_R2':20s} {d0['adj_r2']:15.4f} {d1['adj_r2']:15.4f}")
+    print(f"{'RMSE':20s} {d0['rmse']:15.4f} {d1['rmse']:15.4f}")
+    print(f"{'BP p-value':20s} {d0['bp_p']:15.4g} {d1['bp_p']:15.4g}")
+    print(f"{'BG p-value':20s} {d0['bg_p']:15.4g} {d1['bg_p']:15.4g}")
+    print(f"{'JB p-value':20s} {d0['jb_p']:15.4g} {d1['jb_p']:15.4g}")
+    print(f"{'DW':20s} {d0['dw']:15.4f} {d1['dw']:15.4f}")
+    print(f"{'max Cooks D':20s} {d0['max_cooks_d']:15.4g} {d1['max_cooks_d']:15.4g}")
+    print("=" * 80)
 
 # -----------------------------------------------------------------------------
 # MAIN
@@ -337,6 +369,11 @@ def main():
     df_master = build_master_df(DATA_PATH)
     results = run_weather_monetization_models(df_master)
     df_with_preds = add_level_predictions(df_master, results)
+    diag_dir = r"C:\Users\epicx\Projects\ubercasestudy\reports\model_diagnostics"
+    diags = run_all_diagnostics(results, diag_dir)
+    
+    compare_E0_E1(diags, results, "E0_fare", "E1_fare")
+    compare_E0_E1(diags, results, "E0_margin", "E1_margin")
 
     # example: filter to your rainy/cold case-study date 2025-03-20
     # df_day = df_with_preds[df_with_preds["date"] == "2025-03-20"]

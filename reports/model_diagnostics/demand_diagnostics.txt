@@ -1,0 +1,51 @@
+Model: demand
+================================================================================
+
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:           demand_resid   R-squared:                       0.030
+Model:                            OLS   Adj. R-squared:                  0.029
+Method:                 Least Squares   F-statistic:                     22.79
+Date:                Wed, 10 Dec 2025   Prob (F-statistic):           1.58e-14
+Time:                        22:42:03   Log-Likelihood:                -13774.
+No. Observations:                2206   AIC:                         2.756e+04
+Df Residuals:                    2202   BIC:                         2.758e+04
+Df Model:                           3                                         
+Covariance Type:            nonrobust                                         
+========================================================================================
+                           coef    std err          t      P>|t|      [0.025      0.975]
+----------------------------------------------------------------------------------------
+const                   23.1089      8.165      2.830      0.005       7.098      39.120
+wind_chill_f            -0.7416      0.242     -3.063      0.002      -1.216      -0.267
+heavy_rain_flag_lag0   386.2721     75.204      5.136      0.000     238.795     533.749
+precip_lag0            -48.4371      6.551     -7.394      0.000     -61.283     -35.591
+==============================================================================
+Omnibus:                      279.796   Durbin-Watson:                   1.099
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):             1820.906
+Skew:                          -0.401   Prob(JB):                         0.00
+Kurtosis:                       7.378   Cond. No.                         961.
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+Diagnostic summary:
+  n: 2206
+  k: 4
+  adj_r2: 0.028792400795055184
+  rmse: 124.58668126813605
+  jb_stat: 1820.906002220069
+  jb_p: 0.0
+  bp_stat: 13.511678327644175
+  bp_p: 0.0036511425554592376
+  bg_stat: 497.29448417067806
+  bg_p: 2.577517333441139e-106
+  dw: 1.0988204200654241
+  max_cooks_d: 0.5418809999521563
+  num_high_cooks: 82
+  cooks_threshold: 0.001813236627379873
+
+VIF:
+  wind_chill_f: 1.008
+  heavy_rain_flag_lag0: 2.538
+  precip_lag0: 2.546
