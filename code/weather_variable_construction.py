@@ -18,7 +18,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Base project path
-project_root = pathlib.Path("/Users/jacksonturnbull/Projects/ubercasestudy")
+project_root = pathlib.Path("/Users/epicx/Projects/ubercasestudy")
 
 # Directory containing processed weather files (no file name here)
 weather_path = project_root / "data" / "processed"
@@ -144,9 +144,15 @@ def add_weather_variables(df):
         df["temp_f_mean"], df["dewpoint_f_mean"]
     )
 
-    # Wind chill (°F)
+    # Wind chill (°F) - pure NWS formula
     df["wind_chill_f"] = compute_wind_chill(
         df["temp_f_mean"], df["wind_speed_mph_mean"]
+    )
+
+    # --- NEW: cold-only fallback for missing wind chill ---
+    cold_mask = df["temp_f_min"] <= 50
+    df.loc[cold_mask, "wind_chill_f"] = df.loc[cold_mask, "wind_chill_f"].fillna(
+        df.loc[cold_mask, "temp_f_mean"]
     )
 
     # Heat index (°F)

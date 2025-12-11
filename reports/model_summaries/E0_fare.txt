@@ -1,0 +1,30 @@
+                                  OLS Regression Results                                 
+=========================================================================================
+Dep. Variable:     avg_base_passenger_fare_resid   R-squared:                       0.552
+Model:                                       OLS   Adj. R-squared:                  0.552
+Method:                            Least Squares   F-statistic:                     1757.
+Date:                           Wed, 10 Dec 2025   Prob (F-statistic):               0.00
+Time:                                   20:27:36   Log-Likelihood:                -16925.
+No. Observations:                           5701   AIC:                         3.386e+04
+Df Residuals:                               5696   BIC:                         3.389e+04
+Df Model:                                      4                                         
+Covariance Type:                       nonrobust                                         
+===============================================================================================
+                                  coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------------------
+const                         -15.4834      0.896    -17.288      0.000     -17.239     -13.728
+avg_trip_miles                  2.4144      0.034     71.022      0.000       2.348       2.481
+avg_trip_time_min              -0.0226      0.008     -2.680      0.007      -0.039      -0.006
+demand_resid_lag1               0.0065      0.000     14.961      0.000       0.006       0.007
+driver_pay_pct_of_base_fare   -15.4357      1.095    -14.094      0.000     -17.583     -13.289
+==============================================================================
+Omnibus:                      893.523   Durbin-Watson:                   0.746
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):             2705.401
+Skew:                           0.816   Prob(JB):                         0.00
+Kurtosis:                       5.954   Cond. No.                     3.22e+03
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 3.22e+03. This might indicate that there are
+strong multicollinearity or other numerical problems.

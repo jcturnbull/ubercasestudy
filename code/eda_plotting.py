@@ -788,6 +788,7 @@ def plot_metric_day_vs_weekday_avg(
     compare_dow2=None,
     est_col: str | None = None,
     est_label: str = "Model estimate",
+    shade_hours: tuple[int, int] | None = None,
     time_col: str = DEFAULT_TIME_COL,
     hour_col: str = "request_hour",
     save: bool = False,
@@ -798,22 +799,8 @@ def plot_metric_day_vs_weekday_avg(
 
     Plots the hourly (0–23) values of `metric_col` for a specific calendar date
     against the average profile for one or two comparison weekdays.
-    Optionally overlays a model-estimated series (est_col) for the target day.
-
-    Examples:
-        - Demand:
-            plot_metric_day_vs_weekday_avg(
-                df, "2025-01-19", "request_count",
-                compare_dow1="Sunday",
-                compare_dow2="Saturday",
-                est_col="demand_hat"
-            )
-
-        - Margin:
-            plot_metric_day_vs_weekday_avg(
-                df, "2025-01-19", "margin_sum",
-                compare_dow1="Sunday"
-            )
+    Optionally overlays a model-estimated series (est_col) for the target day
+    and an optional shaded hour range.
     """
     # ------------------------------------------------------------------
     # Basic column checks
@@ -927,6 +914,12 @@ def plot_metric_day_vs_weekday_avg(
     hours = np.arange(24)
     fig, ax = plt.subplots(figsize=(10, 5))
 
+    # Optional shaded region on the x-axis
+    if shade_hours is not None:
+        start, end = shade_hours
+        x0, x1 = sorted((start, end))
+        ax.axvspan(x0 - 0.5, x1 + 0.5, alpha=0.22, color="cornflowerblue")
+
     # Realized metric: solid gray + DOW-colored markers
     real_color = DAY_COLOR_MAP.get(target_dow, "tab:gray")
 
@@ -946,14 +939,14 @@ def plot_metric_day_vs_weekday_avg(
         alpha=0.9,
     )
 
-    # Model estimate overlay (optional)
+    # Model estimate overlay (optional, DISTINCT style)
     if est_profile is not None:
         ax.plot(
             hours,
             est_profile.values,
-            linestyle="-.",
-            linewidth=1.3,
-            color="darkred",
+            linestyle=":",        # dotted
+            linewidth=1.6,
+            color="tab:red",      # red; different from gray/black/blue
             label=est_label,
         )
 
@@ -992,12 +985,14 @@ def plot_metric_day_vs_weekday_avg(
     # Save or show
     if save:
         date_str = target_ts.strftime("%Y%m%d")
-        fname = f"day_vs_weekday_avg_{metric_col}_{date_str}.png"
+        safe_metric = str(metric_col).replace(" ", "_")
+        fname = f"day_vs_weekday_avg_{safe_metric}_{date_str}.png"
         fig.savefig(out_dir / fname, dpi=150, bbox_inches="tight")
     else:
         plt.show()
 
     plt.close(fig)
+
 
 
 def plot_base_fare_by_hour_of_week(
@@ -1739,17 +1734,19 @@ def plot_day_vs_weekday_avg(
     time_col: str = DEFAULT_TIME_COL,
     hour_col: str = "request_hour",
     count_col: str = "request_count",
+    est_col: str | None = None,
+    shade_hours: tuple[int, int] | None = None,
     save: bool = False,
     out_dir: Path | None = None,
 ) -> None:
-
     plot_metric_day_vs_weekday_avg(
         df=df,
         target_date=target_date,
         metric_col=count_col,
         compare_dow1=compare_dow1,
         compare_dow2=compare_dow2,
-        est_col=None,  # no model line here
+        est_col=est_col,
+        shade_hours=shade_hours,
         time_col=time_col,
         hour_col=hour_col,
         save=save,
@@ -2002,6 +1999,9 @@ def run_day_vs_weekday_from_file(
     target_date,
     compare_dow1,
     compare_dow2=None,
+    metric_col: str = "request_count",
+    est_col: str | None = None,          # <-- NEW
+    shade_hours: tuple[int, int] | None = None,
     curfew: bool = True,
     save_plots: bool = False,
 ) -> None:
@@ -2009,7 +2009,7 @@ def run_day_vs_weekday_from_file(
     Convenience wrapper:
       - Reads processed file
       - Applies optional curfew filter (drop hours 2–6)
-      - Runs ONLY the day-vs-weekday comparison plot.
+      - Runs the day-vs-weekday comparison plot on a chosen metric.
     """
     input_path = PROCESSED_DIR / file_name
     df = _read_input(input_path)
@@ -2020,15 +2020,23 @@ def run_day_vs_weekday_from_file(
     if DEFAULT_TIME_COL in df.columns:
         df = df.sort_values(DEFAULT_TIME_COL)
 
-    plot_day_vs_weekday_avg(
-        df,
+    plot_metric_day_vs_weekday_avg(
+        df=df,
         target_date=target_date,
+        metric_col=metric_col,
         compare_dow1=compare_dow1,
         compare_dow2=compare_dow2,
+        est_col=est_col,                  # <-- pass through
+        shade_hours=shade_hours,
+        time_col=DEFAULT_TIME_COL,
+        hour_col="request_hour",
         save=save_plots,
         out_dir=None,
     )
-    print(f"Day vs weekday comparison complete for {target_date} from: {input_path}")
+    print(
+        f"Day vs weekday comparison complete for {target_date} "
+        f"(metric={metric_col}) from: {input_path}"
+    )
 
 
 
@@ -2080,7 +2088,7 @@ def main(file_name: str, save_plots: bool = False, curfew: bool = True, core: bo
 
 if __name__ == "__main__":
     FILE_NAME = "fhvhv_lga_hourly_with_weather_2025.parquet"
-    SAVE_PLOTS = True
+    SAVE_PLOTS = False
     CURFEW = False    # True => drop hours 2–6
     CORE = False      # True => core diagnostics only; False => full EDA
 

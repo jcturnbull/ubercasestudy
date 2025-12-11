@@ -1,0 +1,30 @@
+                              OLS Regression Results                             
+=================================================================================
+Dep. Variable:     margin_per_mile_resid   R-squared:                       0.575
+Model:                               OLS   Adj. R-squared:                  0.575
+Method:                    Least Squares   F-statistic:                     1928.
+Date:                   Wed, 10 Dec 2025   Prob (F-statistic):               0.00
+Time:                           20:27:36   Log-Likelihood:                 1783.8
+No. Observations:                   5701   AIC:                            -3558.
+Df Residuals:                       5696   BIC:                            -3524.
+Df Model:                              4                                         
+Covariance Type:               nonrobust                                         
+===============================================================================================
+                                  coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------------------
+const                           2.8664      0.034     85.194      0.000       2.800       2.932
+avg_trip_miles                 -0.0135      0.001    -10.557      0.000      -0.016      -0.011
+avg_trip_time_min              -0.0067      0.000    -21.204      0.000      -0.007      -0.006
+demand_resid_lag1               0.0001   1.63e-05      8.810      0.000       0.000       0.000
+driver_pay_pct_of_base_fare    -3.4535      0.041    -83.938      0.000      -3.534      -3.373
+==============================================================================
+Omnibus:                     2232.959   Durbin-Watson:                   0.807
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):            38501.604
+Skew:                           1.419   Prob(JB):                         0.00
+Kurtosis:                      15.411   Cond. No.                     3.22e+03
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 3.22e+03. This might indicate that there are
+strong multicollinearity or other numerical problems.

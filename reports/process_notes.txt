@@ -89,6 +89,8 @@ Demand: demand_resid ~ wind_chill_f+heavy_rain_flag_lag0+precip_lag0
 - while precip captures all marginal negative effects on demand, the heavy flag now captures the baseline shift in the regime. this means that once intensity is accounted for to include operational reasons, there's actually increased demand in heavier rain periods than baseline (as expected intuitively), because the marginal suppresion of demand is fully absorbed by precipitation intensity.
 - Increasing rainfall intensity drives the negative demand impact; once we control for that, the heavy-rain regime adds a small positive baseline shift, reflecting behavioral factors rather than operational severity.
 Economics
+- example date of 2025-03-20, total margin E1 estimate is better than E0. This shows actually Uber probably can't improve pricing in rainy, cold weather.
+- “Given the data I had, I find limited incremental monetization from weather-aware pricing, because Uber already appears to be internalizing most of the weather effect.”
 
 ## limitations and enhancements
 - get historical data on an hourly basis for average temp on an hour-level for every day of the year to compare the current temp vs baseline. no time now.
@@ -103,15 +105,19 @@ Economics
 - did not see how much changing the threshold for heavy rain changes the estimated coefficient or the direction. perhaps heavy rain should be higher than 5mm per hour. moderate rain is 2.5-7.5mm/h, and 7.6mm+ is heavy, i split the difference of moderate rain to binary classify rather than three options.
 - since month is a residualization variable (alongside hour of the week), temperature could become partially redundant
 - nonlinear cross terms
+- enhancement: If driver_pay_pct_of_base_fare predicts fare_resid, Uber’s pricing is reacting to driver supply constraints.
+- no out of sample testing done, or bootstrapping, etc.
+- no OLS testing done, like heteroskedasticity, autocorrelation, stationarity, etc.
+- limitation: i don't have instantaneous demand, the best i could do without using future data was lag1 demand.
 
 ## presentation ideas
 clickbait title, answered by "no" (probably) ex: can Uber raise airport fares?
 describe the value proposition Uber offers (safety, comfort, etc)
 present alternatives to Uber (MTA)
 frame approach (i wanted to look at this because xyz, e.g. it's personal to me)
-briefly present upside / risks of this (e.g. XX YYY is the head of airports)
-briefly present challenges (data gathering, verification)
 present results
+briefly present upside / risks of this (e.g. XX YYY is the head of airports)
+briefly present challenges (data gathering, verification) and enhancments - things I didn't do
 ...
 then have backup slides for all the details, in the appendix
 what data i used

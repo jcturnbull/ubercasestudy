@@ -159,6 +159,8 @@ if __name__ == "__main__":
         time_col="datetime_hour",
         include_month_dummies=True,
     )
+    # demand_resid lag 1
+    df_resid["demand_resid_lag1"] = df_resid["demand_resid"].shift(1)
 
     # 3. Weather differentials and flags
     df_weather = add_weather_differentials(df_resid)
@@ -169,7 +171,10 @@ if __name__ == "__main__":
     
     df_weather["precip_lag0"] = df_weather["precip_1h_mm_total"]
     df_weather["precip_lag1"] = df_weather["precip_1h_mm_total"].shift(1)
-
+    
+    # carry forward lagged demand
+    df_weather["demand_resid_lag1"] = df_weather["demand_resid"].shift(1)
+    
     # ensure lag0 names exist explicitly (create_lagged_flags handles this, but explicit is fine)
     df_weather["rain_flag_lag0"] = df_weather["rain_flag"]
     df_weather["heavy_rain_flag_lag0"] = df_weather["heavy_rain_flag"]
@@ -232,7 +237,7 @@ if __name__ == "__main__":
         "driver_pay_pct_of_base_fare",
         "avg_trip_miles",
         "avg_trip_time_min",
-        "demand_resid"
+        "demand_resid_lag1"
     ]
 
     # ----------------------------------------------------------------
@@ -263,15 +268,15 @@ if __name__ == "__main__":
         # -----------------------
         (
             "avg_base_passenger_fare_resid",
-            ["avg_trip_miles", "avg_trip_time_min", "demand_resid", "driver_pay_pct_of_base_fare"]
+            ["avg_trip_miles", "avg_trip_time_min", "demand_resid_lag1", "driver_pay_pct_of_base_fare"]
         ),
         (
             "fare_per_mile_resid",
-            ["avg_trip_miles", "avg_trip_time_min", "demand_resid", "driver_pay_pct_of_base_fare"]
+            ["avg_trip_miles", "avg_trip_time_min", "demand_resid_lag1", "driver_pay_pct_of_base_fare"]
         ),
         (
             "margin_per_mile_resid",
-            ["avg_trip_miles", "avg_trip_time_min", "demand_resid", "driver_pay_pct_of_base_fare"]
+            ["avg_trip_miles", "avg_trip_time_min", "demand_resid_lag1", "driver_pay_pct_of_base_fare"]
         ),
         
         # -----------------------
@@ -279,17 +284,17 @@ if __name__ == "__main__":
         # -----------------------
         (
             "avg_base_passenger_fare_resid",
-            ["avg_trip_miles", "avg_trip_time_min", "demand_resid", "driver_pay_pct_of_base_fare",
+            ["avg_trip_miles", "avg_trip_time_min", "demand_resid_lag1", "driver_pay_pct_of_base_fare",
                 "rain_flag_lag0", "heavy_rain_flag_lag0", "precip_1h_mm_total", "wind_chill_f"]
         ),
         (
             "fare_per_mile_resid",
-            ["avg_trip_miles", "avg_trip_time_min", "demand_resid", "driver_pay_pct_of_base_fare",
+            ["avg_trip_miles", "avg_trip_time_min", "demand_resid_lag1", "driver_pay_pct_of_base_fare",
             "rain_flag_lag0", "heavy_rain_flag_lag0", "precip_1h_mm_total", "wind_chill_f"]
         ),
         (
             "margin_per_mile_resid",
-            ["avg_trip_miles", "avg_trip_time_min", "demand_resid", "driver_pay_pct_of_base_fare",
+            ["avg_trip_miles", "avg_trip_time_min", "demand_resid_lag1", "driver_pay_pct_of_base_fare",
             "rain_flag_lag0", "heavy_rain_flag_lag0", "precip_1h_mm_total", "wind_chill_f"]
         ),
         
@@ -299,7 +304,7 @@ if __name__ == "__main__":
         (
             "fare_per_mile_resid",
             ["avg_trip_miles", "avg_trip_time_min",
-             "demand_resid", "driver_pay_pct_of_base_fare",
+             "demand_resid_lag1", "driver_pay_pct_of_base_fare",
              "rain_flag_lag0", "heavy_rain_flag_lag0",
              "precip_1h_mm_total", "wind_chill_f"]
         ),
@@ -310,7 +315,7 @@ if __name__ == "__main__":
         (
             "driverpay_per_mile_resid",
             ["avg_trip_miles", "avg_trip_time_min",
-            "demand_resid", "driver_pay_pct_of_base_fare",
+            "demand_resid_lag1", "driver_pay_pct_of_base_fare",
             "rain_flag_lag0", "heavy_rain_flag_lag0",
             "precip_1h_mm_total", "wind_chill_f"]
         ),
@@ -321,7 +326,7 @@ if __name__ == "__main__":
         (
             "margin_per_mile_resid",
             ["avg_trip_miles", "avg_trip_time_min",
-            "demand_resid", "driver_pay_pct_of_base_fare",
+            "demand_resid_lag1", "driver_pay_pct_of_base_fare",
             "rain_flag_lag0", "heavy_rain_flag_lag0",
             "precip_1h_mm_total", "wind_chill_f"]
         ),
@@ -331,7 +336,7 @@ if __name__ == "__main__":
         # -----------------------
         (
             "driverpay_per_mile_resid",
-            ["avg_trip_miles", "avg_trip_time_min", "demand_resid",
+            ["avg_trip_miles", "avg_trip_time_min", "demand_resid_lag1",
             "rain_flag_lag0", "heavy_rain_flag_lag0",
             "precip_1h_mm_total", "wind_chill_f"]
         ),
@@ -341,7 +346,7 @@ if __name__ == "__main__":
         # -----------------------
             (
                 "driverpay_per_mile_resid",
-                ["avg_trip_miles", "avg_trip_time_min", "demand_resid",
+                ["avg_trip_miles", "avg_trip_time_min", "demand_resid_lag1",
                 "rain_flag_lag0", "heavy_rain_flag_lag0",
                 "precip_1h_mm_total", "wind_chill_f",
                 "driver_pay_pct_of_base_fare"]
